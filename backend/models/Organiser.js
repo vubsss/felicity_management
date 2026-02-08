@@ -6,17 +6,13 @@ const organiserSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    firstName: {
-        type: String,
-        required: true
-    },
-    lastName: {
+    name: {
         type: String,
         required: true
     },
     category: {
         type: String,
-        enum: ['normal', 'merchandise'],
+        enum: ['tech','sports','design','dance','music','quiz','concert','gaming','misc'],
         required: true
     }}, { timestamps: true });
 

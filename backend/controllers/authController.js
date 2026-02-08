@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Participant = require('../models/Participant');
+const Organiser = require('../models/Organiser');
 const dotenv = require('dotenv');
 const { z } = require('zod');
 
@@ -114,8 +115,13 @@ const meController = async(req,res,next) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        const participant = await Participant.findOne({ userId: user._id });
-        res.json({ user, participant });
+        let profile = null;
+        if (user.role === 'participant') {
+            profile = await Participant.findOne({ userId: user._id });
+        } else if (user.role === 'organiser') {
+            profile = await Organiser.findOne({ userId: user._id });
+        }
+        res.json({ user, role: user.role, profile });
     } catch (error) {
         return next(error);
     }

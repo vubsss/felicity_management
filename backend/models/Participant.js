@@ -27,7 +27,12 @@ const participantSchema = new mongoose.Schema({
         required: true
     },
     interests: {
-        type: [String],
+        type: [
+            {
+                type: String,
+                enum: ['tech', 'sports', 'design', 'dance', 'music', 'quiz', 'concert', 'gaming', 'misc']
+            }
+        ],
         default: []
     },
     followedOrganisers: {

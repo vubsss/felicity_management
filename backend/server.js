@@ -3,6 +3,7 @@ const cors = require('cors'); //for cross-origin requests
 const helmet = require('helmet'); //for security headers
 const connectDB = require('./config/db'); //database connection
 const authRoutes = require('./routes/authRoute'); //auth routes
+const participantRoutes = require('./routes/participantRoute');
 const errorHandler = require('./middleware/errorHandler');
 
 const dotenv = require('dotenv'); //for environment variables
@@ -21,6 +22,7 @@ app.use(express.json());
 
 //routes
 app.use('/api/auth', authRoutes);
+app.use('/api/participants', participantRoutes);
 
 //error handler
 app.use(errorHandler);
