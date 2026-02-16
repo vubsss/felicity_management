@@ -4,6 +4,8 @@ const helmet = require('helmet'); //for security headers
 const connectDB = require('./config/db'); //database connection
 const authRoutes = require('./routes/authRoute'); //auth routes
 const participantRoutes = require('./routes/participantRoute');
+const eventRoutes = require('./routes/eventRoute');
+const organiserRoutes = require('./routes/organiserRoute');
 const errorHandler = require('./middleware/errorHandler');
 
 const dotenv = require('dotenv'); //for environment variables
@@ -23,6 +25,8 @@ app.use(express.json());
 //routes
 app.use('/api/auth', authRoutes);
 app.use('/api/participants', participantRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/organisers', organiserRoutes);
 
 //error handler
 app.use(errorHandler);

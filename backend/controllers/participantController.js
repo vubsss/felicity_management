@@ -1,5 +1,7 @@
 const { z } = require('zod');
 const Participant = require('../models/Participant');
+const Registration = require('../models/Registration');
+const Ticket = require('../models/Ticket');
 
 const allowedInterests = ['tech', 'sports', 'design', 'dance', 'music', 'quiz', 'concert', 'gaming', 'misc'];
 
@@ -54,4 +56,50 @@ const updatePreferences = async (req, res, next) => {
     }
 };
 
-module.exports = { getPreferences, updatePreferences };
+const getRegistrations = async (req, res, next) => {
+    try {
+        const participant = await Participant.findOne({ userId: req.user.userId });
+        if (!participant) {
+            return res.status(404).json({ message: 'Participant not found' });
+        }
+
+        const registrations = await Registration.find({ participantId: participant._id })
+            .populate({
+                path: 'eventId',
+                populate: { path: 'organiserId', select: 'name category' }
+            })
+            .populate('ticketId')
+            .sort({ createdAt: -1 });
+
+        return res.json({ registrations });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+const getTicket = async (req, res, next) => {
+    try {
+        const participant = await Participant.findOne({ userId: req.user.userId });
+        if (!participant) {
+            return res.status(404).json({ message: 'Participant not found' });
+        }
+
+        const ticket = await Ticket.findOne({
+            _id: req.params.id,
+            participantId: participant._id
+        }).populate({
+            path: 'eventId',
+            populate: { path: 'organiserId', select: 'name category' }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
+
+        return res.json({ ticket });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+module.exports = { getPreferences, updatePreferences, getRegistrations, getTicket };

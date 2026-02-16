@@ -10,7 +10,8 @@ dotenv.config();
 
 const loginSchema = z.object({
     email: z.string().email(),
-    password: z.string().min(1)
+    password: z.string().min(1),
+    recaptchaToken: z.string().min(1)
 });
 
 const signupSchema = z.object({
@@ -20,7 +21,8 @@ const signupSchema = z.object({
     password: z.string().min(6),
     participantType: z.enum(['internal', 'external']),
     organisation: z.string().optional(),
-    contactNumber: z.string().min(1)
+    contactNumber: z.string().min(1),
+    recaptchaToken: z.string().min(1)
 });
 
 //func=> email,pw => validate => generate token

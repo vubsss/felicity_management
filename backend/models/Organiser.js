@@ -14,6 +14,23 @@ const organiserSchema = new mongoose.Schema({
         type: String,
         enum: ['tech','sports','design','dance','music','quiz','concert','gaming','misc'],
         required: true
-    }}, { timestamps: true });
+    },
+    description: {
+        type: String,
+        default: ''
+    },
+    contactEmail: {
+        type: String,
+        default: ''
+    },
+    contactNumber: {
+        type: String,
+        default: ''
+    },
+    discordWebhook: {
+        type: String,
+        default: ''
+    }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Organiser', organiserSchema);

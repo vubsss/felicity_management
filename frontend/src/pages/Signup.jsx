@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
+import { getRecaptchaToken } from '../utils/recaptcha'
 
 const Signup = () => {
   const [form, setForm] = useState({
@@ -26,6 +27,7 @@ const Signup = () => {
     setError('')
     setIsSubmitting(true)
     try {
+      const recaptchaToken = await getRecaptchaToken('signup')
       const payload = {
         firstName: form.firstName,
         lastName: form.lastName,
@@ -33,12 +35,13 @@ const Signup = () => {
         password: form.password,
         participantType: form.participantType,
         organisation: form.participantType === 'external' ? form.organisation : undefined,
-        contactNumber: form.contactNumber
+        contactNumber: form.contactNumber,
+        recaptchaToken
       }
       await apiClient.post('/api/auth/signup', payload)
       navigate('/login')
     } catch (err) {
-      const message = err?.response?.data?.message || 'Unable to sign up. Try again.'
+      const message = err?.response?.data?.message || 'ReCAPTCHA failde. Try again.'
       setError(message)
     } finally {
       setIsSubmitting(false)
@@ -49,8 +52,8 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
-      <div className="card w-full max-w-2xl bg-base-100 shadow-xl">
-        <div className="card-body">
+      <div className="card w-full max-w-4xl bg-base-100 shadow-xl">
+        <div className="card-body p-8">
           <h1 className="text-2xl font-semibold">Create account</h1>
           <p className="text-sm text-base-content/70">Register as an internal or external participant.</p>
           <form className="mt-4 grid gap-4" onSubmit={handleSubmit}>
@@ -60,30 +63,33 @@ const Signup = () => {
               </div>
             )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="form-control">
-                <label className="label" htmlFor="firstName">
+            <div>
+              <label className="label" htmlFor="firstName">
                   <span className="label-text">First name</span>
                 </label>
+              <div className="form-control w-full">
                 <input
                   id="firstName"
                   name="firstName"
                   type="text"
-                  className="input input-bordered"
+                  className="input input-bordered w-full"
                   placeholder="Aarav"
                   value={form.firstName}
                   onChange={handleChange}
                   required
                 />
               </div>
-              <div className="form-control">
-                <label className="label" htmlFor="lastName">
+            </div>
+            <div>
+              <label className="label" htmlFor="lastName">
                   <span className="label-text">Last name</span>
-                </label>
+              </label>
+              <div className="form-control w-full">
                 <input
                   id="lastName"
                   name="lastName"
                   type="text"
-                  className="input input-bordered"
+                  className="input input-bordered w-full"
                   placeholder="Sharma"
                   value={form.lastName}
                   onChange={handleChange}
@@ -91,25 +97,28 @@ const Signup = () => {
                 />
               </div>
             </div>
-            <div className="form-control">
+            </div>
+            <div>
               <label className="label" htmlFor="email">
                 <span className="label-text">Email</span>
               </label>
+              <div className="form-control w-full">
               <input
                 id="email"
                 name="email"
                 type="email"
-                className="input input-bordered"
+                className="input input-bordered w-full"
                 placeholder="name@iiit.ac.in"
                 value={form.email}
                 onChange={handleChange}
                 required
               />
-              <span className="text-xs text-base-content/60 mt-1">
+            </div>
+            <span className="text-xs text-base-content/60 mt-1">
                 Internal participants must use IIIT email domains.
               </span>
             </div>
-            <div className="form-control">
+            <div className="form-control w-full">
               <label className="label" htmlFor="password">
                 <span className="label-text">Password</span>
               </label>
@@ -117,7 +126,7 @@ const Signup = () => {
                 id="password"
                 name="password"
                 type="password"
-                className="input input-bordered"
+                className="input input-bordered w-full"
                 placeholder="Minimum 6 characters"
                 minLength={6}
                 value={form.password}
@@ -125,14 +134,14 @@ const Signup = () => {
                 required
               />
             </div>
-            <div className="form-control">
+            <div className="form-control w-full">
               <label className="label" htmlFor="participantType">
                 <span className="label-text">Participant type</span>
               </label>
               <select
                 id="participantType"
                 name="participantType"
-                className="select select-bordered"
+                className="select select-bordered w-full"
                 value={form.participantType}
                 onChange={handleChange}
                 required
@@ -142,7 +151,7 @@ const Signup = () => {
               </select>
             </div>
             {showOrganisation && (
-              <div className="form-control">
+              <div className="form-control w-full">
                 <label className="label" htmlFor="organisation">
                   <span className="label-text">Organisation</span>
                 </label>
@@ -150,7 +159,7 @@ const Signup = () => {
                   id="organisation"
                   name="organisation"
                   type="text"
-                  className="input input-bordered"
+                  className="input input-bordered w-full"
                   placeholder="Company or institute"
                   value={form.organisation}
                   onChange={handleChange}
@@ -158,7 +167,7 @@ const Signup = () => {
                 />
               </div>
             )}
-            <div className="form-control">
+            <div className="form-control w-full">
               <label className="label" htmlFor="contactNumber">
                 <span className="label-text">Contact number</span>
               </label>
@@ -166,7 +175,7 @@ const Signup = () => {
                 id="contactNumber"
                 name="contactNumber"
                 type="tel"
-                className="input input-bordered"
+                className="input input-bordered w-full"
                 placeholder="Phone number"
                 value={form.contactNumber}
                 onChange={handleChange}

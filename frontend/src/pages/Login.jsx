@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
+import { getRecaptchaToken } from '../utils/recaptcha'
+import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
   const [form, setForm] = useState({
@@ -10,6 +12,7 @@ const Login = () => {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+  const { refreshAuth } = useAuth()
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -21,10 +24,12 @@ const Login = () => {
     setError('')
     setIsSubmitting(true)
     try {
-      const response = await apiClient.post('/api/auth/login', form)
+      const recaptchaToken = await getRecaptchaToken('login')
+      const response = await apiClient.post('/api/auth/login', { ...form, recaptchaToken })
       const { token, role } = response.data
       localStorage.setItem('token', token)
       localStorage.setItem('role', role)
+      await refreshAuth()
       navigate('/')
     } catch (err) {
       const message = err?.response?.data?.message || 'Unable to sign in. Try again.'
@@ -36,8 +41,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
-      <div className="card w-full max-w-md bg-base-100 shadow-xl">
-        <div className="card-body">
+      <div className="card w-full max-w-2xl bg-base-100 shadow-xl">
+        <div className="card-body p-8">
           <h1 className="text-2xl font-semibold">Login</h1>
           <p className="text-sm text-base-content/70">Welcome Back!</p>
           <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
@@ -50,12 +55,12 @@ const Login = () => {
                 <label className="label" htmlFor="email">
                     <span className="label-text">Email</span>
                 </label>
-                <div className="form-control">
+                <div className="form-control w-full">
                 <input
                     id="email"
                     name="email"
                     type="email"
-                    className="input input-bordered"
+                  className="input input-bordered w-full"
                     placeholder="name@iiit.ac.in"
                     value={form.email}
                     onChange={handleChange}
@@ -67,12 +72,12 @@ const Login = () => {
                 <label className="label" htmlFor="password">
                     <span className="label-text">Password</span>
                 </label>
-                <div className="form-control">
+                <div className="form-control w-full">
                     <input
                         id="password"
                         name="password"
                         type="password"
-                        className="input input-bordered"
+                    className="input input-bordered w-full"
                         placeholder="Enter your password"
                         value={form.password}
                         onChange={handleChange}
