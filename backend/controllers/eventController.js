@@ -1,8 +1,11 @@
 const { z } = require('zod');
 const Event = require('../models/Event');
+const Organiser = require('../models/Organiser');
 const Participant = require('../models/Participant');
+const User = require('../models/User');
 const Registration = require('../models/Registration');
 const Ticket = require('../models/Ticket');
+const { sendTicketEmail } = require('../utils/mailer');
 
 const browseSchema = z.object({
     search: z.string().optional(),
@@ -11,11 +14,13 @@ const browseSchema = z.object({
     category: z.string().optional(),
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),
-    trending: z.string().optional()
+    trending: z.string().optional(),
+    organiserIds: z.string().optional()
 });
 
 const registerSchema = z.object({
-    formData: z.record(z.any()).optional()
+    formData: z.record(z.any()).optional(),
+    fileUploadMap: z.record(z.any()).optional()
 });
 
 const purchaseSchema = z.object({
@@ -27,6 +32,8 @@ const purchaseSchema = z.object({
         })
     )
 });
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const buildTicket = async ({ eventId, participantId }) => {
     const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -50,7 +57,8 @@ const browseEvents = async (req, res, next) => {
             category,
             dateFrom,
             dateTo,
-            trending
+            trending,
+            organiserIds
         } = parsed.data;
 
         const filter = { status: { $ne: 'draft' } };
@@ -63,14 +71,35 @@ const browseEvents = async (req, res, next) => {
             if (dateTo) filter.startTime.$lte = new Date(dateTo);
         }
 
+        if (organiserIds) {
+            const ids = organiserIds.split(',').map((id) => id.trim()).filter(Boolean);
+            if (ids.length) {
+                filter.organiserId = { $in: ids };
+            }
+        }
+
         if (search) {
+            const escaped = escapeRegex(search);
+            const fuzzy = escaped.split('').join('.*');
+            const pattern = search.length > 2 ? fuzzy : escaped;
+            const nameRegex = new RegExp(pattern, 'i');
+
+            const matchedOrganisers = await Organiser.find({ name: { $regex: nameRegex } })
+                .select('_id')
+                .lean();
+            const organiserMatchIds = matchedOrganisers.map((o) => o._id);
+
             filter.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { tags: { $in: [new RegExp(search, 'i')] } }
+                { name: { $regex: nameRegex } },
+                { tags: { $in: [nameRegex] } },
+                { organiserId: { $in: organiserMatchIds } }
             ];
         }
 
-        let events = await Event.find(filter).sort({ startTime: 1 }).lean();
+        let events = await Event.find(filter)
+            .populate({ path: 'organiserId', select: 'name category description contactEmail' })
+            .sort({ startTime: 1 })
+            .lean();
 
         if (trending === 'true') {
             const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -94,18 +123,89 @@ const browseEvents = async (req, res, next) => {
 
 const getEvent = async (req, res, next) => {
     try {
-        const event = await Event.findOne({ _id: req.params.id, status: { $ne: 'draft' } }).lean();
+        const event = await Event.findOne({ _id: req.params.id, status: { $ne: 'draft' } })
+            .populate({ path: 'organiserId', select: 'name category description contactEmail' })
+            .lean();
         if (!event) {
             return res.status(404).json({ message: 'Event not found' });
         }
-        return res.json({ event });
+        const registrationCount = await Registration.countDocuments({ eventId: event._id });
+        const remainingSpots = typeof event.regLimit === 'number'
+            ? Math.max(event.regLimit - registrationCount, 0)
+            : null;
+
+        return res.json({
+            event,
+            registrationCount,
+            remainingSpots
+        });
     } catch (error) {
         return next(error);
     }
 };
 
+const validateFormSubmission = (event, formData, fileMap = {}) => {
+    if (!event.customForm || event.customForm.length === 0) {
+        return { valid: true };
+    }
+
+    for (const field of event.customForm) {
+        const fieldValue = formData[field.label];
+        const fileValue = fileMap[field.label];
+
+        // Check required fields
+        if (field.required) {
+            if (field.fieldType === 'file') {
+                if (!fileValue) {
+                    return {
+                        valid: false,
+                        message: `${field.label} is required`
+                    };
+                }
+            } else {
+                if (!fieldValue || String(fieldValue).trim() === '') {
+                    return {
+                        valid: false,
+                        message: `${field.label} is required`
+                    };
+                }
+            }
+        }
+    }
+
+    return { valid: true };
+};
+
 const registerForEvent = async (req, res, next) => {
-    const parsed = registerSchema.safeParse(req.body || {});
+    const fileMap = {};
+    if (req.files) {
+        for (const file of req.files) {
+            fileMap[file.fieldname] = {
+                filename: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size,
+                buffer: file.buffer.toString('base64')
+            };
+        }
+    }
+
+    let parsedFormData = {};
+    if (req.body?.formData) {
+        if (typeof req.body.formData === 'string') {
+            try {
+                parsedFormData = JSON.parse(req.body.formData);
+            } catch (error) {
+                return res.status(400).json({ message: 'Invalid registration payload' });
+            }
+        } else if (typeof req.body.formData === 'object') {
+            parsedFormData = req.body.formData;
+        }
+    }
+
+    const parsed = registerSchema.safeParse({
+        formData: parsedFormData,
+        fileUploadMap: fileMap
+    });
     if (!parsed.success) {
         return res.status(400).json({ message: 'Invalid registration payload' });
     }
@@ -148,16 +248,44 @@ const registerForEvent = async (req, res, next) => {
             return res.status(400).json({ message: 'Already registered' });
         }
 
+        // Validate form submission
+        const formValidation = validateFormSubmission(event, parsed.data.formData || {}, fileMap);
+        if (!formValidation.valid) {
+            return res.status(400).json({ message: formValidation.message });
+        }
+
+        // Combine form data and file uploads
+        const combinedFormData = {
+            ...parsed.data.formData,
+            ...fileMap
+        };
+
         const ticket = await buildTicket({ eventId: event._id, participantId: participant._id });
         const registration = new Registration({
             eventId: event._id,
             participantId: participant._id,
             type: 'normal',
             status: 'registered',
-            formData: parsed.data.formData || null,
+            formData: combinedFormData || null,
             ticketId: ticket._id
         });
         await registration.save();
+
+        try {
+            const user = await User.findById(participant.userId).select('email').lean();
+            const frontendUrl = process.env.FRONTEND_URL;
+            const ticketUrl = frontendUrl ? `${frontendUrl.replace(/\/$/, '')}/tickets/${ticket._id}` : '';
+            if (user?.email) {
+                await sendTicketEmail({
+                    to: user.email,
+                    event,
+                    ticket,
+                    ticketUrl
+                });
+            }
+        } catch (emailError) {
+            // Ignore email failures to avoid blocking registration.
+        }
 
         return res.status(201).json({ registration, ticket });
     } catch (error) {
@@ -236,4 +364,4 @@ const purchaseMerchandise = async (req, res, next) => {
     }
 };
 
-module.exports = { browseEvents, getEvent, registerForEvent, purchaseMerchandise };
+module.exports = { browseEvents, getEvent, registerForEvent, purchaseMerchandise, validateFormSubmission };

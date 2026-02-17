@@ -72,8 +72,7 @@ const eventSchema = new mongoose.Schema({
         }
     },
     tags: [{
-        type: String,
-        enum: ['tech', 'sports', 'design', 'dance', 'music', 'quiz', 'concert', 'gaming', 'misc']
+        type: String
     }],
     customForm: [
         {

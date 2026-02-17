@@ -30,6 +30,11 @@ const organiserSchema = new mongoose.Schema({
     discordWebhook: {
         type: String,
         default: ''
+    },
+    status: {
+        type: String,
+        enum: ['active', 'disabled', 'archived'],
+        default: 'active'
     }
 }, { timestamps: true });
 

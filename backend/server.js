@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoute'); //auth routes
 const participantRoutes = require('./routes/participantRoute');
 const eventRoutes = require('./routes/eventRoute');
 const organiserRoutes = require('./routes/organiserRoute');
+const adminRoutes = require('./routes/adminRoute');
 const errorHandler = require('./middleware/errorHandler');
 
 const dotenv = require('dotenv'); //for environment variables
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/participants', participantRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/organisers', organiserRoutes);
+app.use('/api/admin', adminRoutes);
 
 //error handler
 app.use(errorHandler);

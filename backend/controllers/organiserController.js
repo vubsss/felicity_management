@@ -4,8 +4,14 @@ const Organiser = require('../models/Organiser');
 const Participant = require('../models/Participant');
 const Registration = require('../models/Registration');
 const User = require('../models/User');
+const PasswordResetRequest = require('../models/PasswordResetRequest');
 
 const allowedCategories = ['tech', 'sports', 'design', 'dance', 'music', 'quiz', 'concert', 'gaming', 'misc'];
+
+const publicListSchema = z.object({
+    search: z.string().optional(),
+    category: z.enum(allowedCategories).optional()
+});
 
 const profileSchema = z.object({
     name: z.string().min(1).optional(),
@@ -27,7 +33,7 @@ const eventDraftSchema = z.object({
     endTime: z.string().optional(),
     regLimit: z.number().int().positive().optional(),
     fee: z.number().min(0).optional(),
-    tags: z.array(z.enum(allowedCategories)).optional(),
+    tags: z.array(z.string().min(1)).optional(),
     customForm: z.array(
         z.object({
             label: z.string().min(1),
@@ -77,7 +83,7 @@ const ensureEditableForm = async (eventId, updates) => {
     }
     const count = await Registration.countDocuments({ eventId });
     if (count > 0) {
-        return { ok: false, message: 'Form is locked after the first registration' };
+        return { ok: false, message: 'Form is locked after the first registration. You cannot modify custom form fields.' };
     }
     return { ok: true };
 };
@@ -106,13 +112,94 @@ const buildAnalytics = async (event) => {
     };
 };
 
+const postDiscordWebhook = async (webhookUrl, event) => {
+    if (!webhookUrl) return;
+
+    const start = event.startTime ? new Date(event.startTime).toLocaleString() : 'TBD';
+    const end = event.endTime ? new Date(event.endTime).toLocaleString() : 'TBD';
+    const deadline = event.registrationDeadline
+        ? new Date(event.registrationDeadline).toLocaleString()
+        : 'TBD';
+
+    const content = [
+        `New event published: ${event.name}`,
+        `Type: ${event.eventType}`,
+        `Category: ${event.category || 'Uncategorized'}`,
+        `Eligibility: ${event.eligibility || 'TBD'}`,
+        `Starts: ${start}`,
+        `Ends: ${end}`,
+        `Registration deadline: ${deadline}`
+    ].join('\n');
+
+    try {
+        await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        });
+    } catch (error) {
+        // Ignore webhook failures to avoid blocking publishes.
+    }
+};
+
+const listPublicOrganisers = async (req, res, next) => {
+    const parsed = publicListSchema.safeParse(req.query);
+    if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid query parameters' });
+    }
+
+    try {
+        const filter = { status: 'active' };
+        if (parsed.data.category) {
+            filter.category = parsed.data.category;
+        }
+        if (parsed.data.search) {
+            const escaped = parsed.data.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            filter.name = { $regex: escaped, $options: 'i' };
+        }
+
+        const organisers = await Organiser.find(filter)
+            .select('name category description contactEmail contactNumber')
+            .sort({ name: 1 })
+            .lean();
+
+        return res.json({ organisers });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+const getPublicOrganiser = async (req, res, next) => {
+    try {
+        const organiser = await Organiser.findById(req.params.id)
+            .select('name category description contactEmail contactNumber')
+            .lean();
+        if (!organiser) {
+            return res.status(404).json({ message: 'Organiser not found' });
+        }
+
+        const events = await Event.find({ organiserId: organiser._id, status: { $ne: 'draft' } })
+            .sort({ startTime: 1 })
+            .lean();
+
+        const now = new Date();
+        const upcoming = events.filter((event) => !event.endTime || new Date(event.endTime) >= now);
+        const past = events.filter((event) => event.endTime && new Date(event.endTime) < now);
+
+        return res.json({ organiser, events: { upcoming, past } });
+    } catch (error) {
+        return next(error);
+    }
+};
+
 const getProfile = async (req, res, next) => {
     try {
         const organiser = await Organiser.findOne({ userId: req.user.userId });
         if (!organiser) {
             return res.status(404).json({ message: 'Organiser not found' });
         }
-        return res.json({ organiser });
+        const user = await User.findById(req.user.userId).select('email');
+        return res.json({ organiser, email: user?.email || '' });
     } catch (error) {
         return next(error);
     }
@@ -313,6 +400,8 @@ const publishEvent = async (req, res, next) => {
         await event.validate();
         await event.save();
 
+        await postDiscordWebhook(organiser.discordWebhook, event);
+
         return res.json({ event });
     } catch (error) {
         return next(error);
@@ -349,6 +438,31 @@ const updateStatus = async (req, res, next) => {
         event.status = nextStatus;
         await event.save();
         return res.json({ event });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+const requestPasswordReset = async (req, res, next) => {
+    try {
+        const organiser = await Organiser.findOne({ userId: req.user.userId });
+        if (!organiser) {
+            return res.status(404).json({ message: 'Organiser not found' });
+        }
+
+        const existing = await PasswordResetRequest.findOne({
+            organiserId: organiser._id,
+            status: 'open'
+        });
+
+        if (existing) {
+            return res.json({ request: existing, message: 'Reset request already submitted' });
+        }
+
+        const request = new PasswordResetRequest({ organiserId: organiser._id });
+        await request.save();
+
+        return res.status(201).json({ request, message: 'Reset request submitted' });
     } catch (error) {
         return next(error);
     }
@@ -469,6 +583,8 @@ const exportParticipants = async (req, res, next) => {
 };
 
 module.exports = {
+    listPublicOrganisers,
+    getPublicOrganiser,
     getProfile,
     updateProfile,
     getDashboard,
@@ -478,6 +594,7 @@ module.exports = {
     updateEvent,
     publishEvent,
     updateStatus,
+    requestPasswordReset,
     getParticipants,
     exportParticipants
 };

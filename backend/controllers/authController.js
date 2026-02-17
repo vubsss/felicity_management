@@ -25,7 +25,7 @@ const signupSchema = z.object({
     recaptchaToken: z.string().min(1)
 });
 
-//func=> email,pw => validate => generate token
+//func=> email,pw => validate => check organiser status => generate token
 const loginController = async (req, res, next) => {
     const parseLogin = loginSchema.safeParse(req.body);
     if (!parseLogin.success) {
@@ -45,6 +45,25 @@ const loginController = async (req, res, next) => {
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        // Check if user account is disabled
+        if (!user.isActive) {
+            return res.status(403).json({ message: 'Your account has been disabled. Contact an administrator.' });
+        }
+
+        // Check organiser status
+        if (user.role === 'organiser') {
+            const organiser = await Organiser.findOne({ userId: user._id });
+            if (!organiser) {
+                return res.status(404).json({ message: 'Organiser profile not found' });
+            }
+            if (organiser.status === 'disabled') {
+                return res.status(403).json({ message: 'Your organiser account has been disabled. Contact an administrator.' });
+            }
+            if (organiser.status === 'archived') {
+                return res.status(403).json({ message: 'Your organiser account has been archived and is no longer accessible.' });
+            }
         }
 
         const token = jwt.sign(
@@ -109,7 +128,7 @@ const signupController = async (req, res, next) => {
     }
 };
 
-//func => get current user details (except pw) + participant details
+//func => get current user details (except pw) + participant/organiser details + status
 const meController = async(req,res,next) => {
     try {
         const userId = req.user.userId;
@@ -118,12 +137,14 @@ const meController = async(req,res,next) => {
             return res.status(404).json({ message: 'User not found' });
         }
         let profile = null;
+        let accountStatus = user.isActive ? 'active' : 'disabled';
         if (user.role === 'participant') {
             profile = await Participant.findOne({ userId: user._id });
         } else if (user.role === 'organiser') {
             profile = await Organiser.findOne({ userId: user._id });
+            accountStatus = profile?.status || 'unknown';
         }
-        res.json({ user, role: user.role, profile });
+        res.json({ user, role: user.role, profile, accountStatus });
     } catch (error) {
         return next(error);
     }

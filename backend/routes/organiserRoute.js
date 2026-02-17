@@ -2,6 +2,8 @@ const express = require('express');
 const authJWT = require('../middleware/authJWT');
 const requireRole = require('../middleware/requireRole');
 const {
+    listPublicOrganisers,
+    getPublicOrganiser,
     getProfile,
     updateProfile,
     getDashboard,
@@ -11,11 +13,15 @@ const {
     updateEvent,
     publishEvent,
     updateStatus,
+    requestPasswordReset,
     getParticipants,
     exportParticipants
 } = require('../controllers/organiserController');
 
 const router = express.Router();
+
+router.get('/public', listPublicOrganisers);
+router.get('/public/:id', getPublicOrganiser);
 
 router.get('/me', authJWT, requireRole(['organiser']), getProfile);
 router.put('/me', authJWT, requireRole(['organiser']), updateProfile);
@@ -27,6 +33,7 @@ router.get('/events/:id', authJWT, requireRole(['organiser']), getEvent);
 router.put('/events/:id', authJWT, requireRole(['organiser']), updateEvent);
 router.post('/events/:id/publish', authJWT, requireRole(['organiser']), publishEvent);
 router.post('/events/:id/status', authJWT, requireRole(['organiser']), updateStatus);
+router.post('/password-reset-request', authJWT, requireRole(['organiser']), requestPasswordReset);
 router.get('/events/:id/participants', authJWT, requireRole(['organiser']), getParticipants);
 router.get('/events/:id/participants/export', authJWT, requireRole(['organiser']), exportParticipants);
 
