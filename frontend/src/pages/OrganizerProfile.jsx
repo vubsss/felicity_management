@@ -8,10 +8,12 @@ const OrganizerProfile = () => {
     description: '',
     contactEmail: '',
     contactNumber: '',
-    discordWebhook: ''
+    discordWebhook: '',
+    loginEmail: ''
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [requestingReset, setRequestingReset] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -25,7 +27,8 @@ const OrganizerProfile = () => {
           description: response.data.organiser?.description || '',
           contactEmail: response.data.organiser?.contactEmail || '',
           contactNumber: response.data.organiser?.contactNumber || '',
-          discordWebhook: response.data.organiser?.discordWebhook || ''
+          discordWebhook: response.data.organiser?.discordWebhook || '',
+          loginEmail: response.data.email || ''
         })
       } catch (err) {
         setError(err?.response?.data?.message || 'Unable to load profile.')
@@ -58,12 +61,26 @@ const OrganizerProfile = () => {
     }
   }
 
+  const handleResetRequest = async () => {
+    setRequestingReset(true)
+    setError('')
+    setSuccess('')
+    try {
+      const response = await apiClient.post('/api/organisers/password-reset-request')
+      setSuccess(response.data.message || 'Password reset request submitted.')
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Unable to submit reset request.')
+    } finally {
+      setRequestingReset(false)
+    }
+  }
+
   if (loading) {
-    return <div className="min-h-screen bg-base-200 p-6">Loading profile...</div>
+    return <div className="lb-page">Loading profile...</div>
   }
 
   return (
-    <div className="min-h-screen bg-base-200 p-6">
+    <div className="lb-page">
       <div className="max-w-4xl mx-auto space-y-4">
         <div>
           <h1 className="text-2xl font-semibold">Organizer profile</h1>
@@ -130,6 +147,20 @@ const OrganizerProfile = () => {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="form-control">
+                <label className="label" htmlFor="loginEmail">
+                  <span className="label-text">Login email</span>
+                </label>
+                <input
+                  id="loginEmail"
+                  name="loginEmail"
+                  type="email"
+                  className="input input-bordered"
+                  value={form.loginEmail}
+                  disabled
+                />
+                <span className="text-xs text-base-content/60 mt-1">Read-only</span>
+              </div>
+              <div className="form-control">
                 <label className="label" htmlFor="contactEmail">
                   <span className="label-text">Contact email</span>
                 </label>
@@ -175,9 +206,14 @@ const OrganizerProfile = () => {
             </div>
 
             <div className="flex justify-end">
-              <button className="btn btn-primary" type="submit" disabled={saving}>
-                {saving ? 'Saving...' : 'Save profile'}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn btn-outline" type="button" onClick={handleResetRequest} disabled={requestingReset}>
+                  {requestingReset ? 'Requesting...' : 'Request password reset'}
+                </button>
+                <button className="btn btn-success" type="submit" disabled={saving}>
+                  {saving ? 'Saving...' : 'Save profile'}
+                </button>
+              </div>
             </div>
           </div>
         </form>

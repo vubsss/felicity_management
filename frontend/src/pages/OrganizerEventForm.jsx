@@ -6,7 +6,8 @@ const emptyField = () => ({
   label: '',
   fieldType: 'text',
   required: false,
-  options: []
+  options: [],
+  optionsInput: ''
 })
 
 const OrganizerEventForm = () => {
@@ -29,6 +30,7 @@ const OrganizerEventForm = () => {
     customForm: [],
     merchandise: { items: [] }
   })
+  const [tagsInput, setTagsInput] = useState('')
   const [status, setStatus] = useState('draft')
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
@@ -45,10 +47,15 @@ const OrganizerEventForm = () => {
         setForm({
           ...form,
           ...event,
+          customForm: (event.customForm || []).map((field) => ({
+            ...field,
+            optionsInput: (field.options || []).join(', ')
+          })),
           registrationDeadline: event.registrationDeadline ? event.registrationDeadline.slice(0, 16) : '',
           startTime: event.startTime ? event.startTime.slice(0, 16) : '',
           endTime: event.endTime ? event.endTime.slice(0, 16) : ''
         })
+        setTagsInput((event.tags || []).join(', '))
         setStatus(event.status)
       } catch (err) {
         setError(err?.response?.data?.message || 'Unable to load event.')
@@ -75,8 +82,13 @@ const OrganizerEventForm = () => {
   }
 
   const handleTagChange = (event) => {
-    const options = Array.from(event.target.selectedOptions).map((option) => option.value)
-    setForm((prev) => ({ ...prev, tags: options }))
+    const { value } = event.target
+    setTagsInput(value)
+    const tags = value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
+    setForm((prev) => ({ ...prev, tags }))
   }
 
   const addField = () => {
@@ -151,11 +163,11 @@ const OrganizerEventForm = () => {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-base-200 p-6">Loading event...</div>
+    return <div className="lb-page">Loading event...</div>
   }
 
   return (
-    <div className="min-h-screen bg-base-200 p-6">
+    <div className="lb-page">
       <div className="max-w-5xl mx-auto space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -165,7 +177,7 @@ const OrganizerEventForm = () => {
           {isEditing && (
             <div className="flex flex-wrap gap-2">
               {status === 'draft' && (
-                <button className="btn btn-primary" type="button" onClick={handlePublish}>
+                <button className="btn btn-success" type="button" onClick={handlePublish}>
                   Publish
                 </button>
               )}
@@ -175,8 +187,18 @@ const OrganizerEventForm = () => {
                 </button>
               )}
               {status === 'ongoing' && (
-                <button className="btn btn-outline" type="button" onClick={() => handleStatusChange('completed')}>
-                  Mark completed
+                <>
+                  <button className="btn btn-outline" type="button" onClick={() => handleStatusChange('completed')}>
+                    Mark completed
+                  </button>
+                  <button className="btn btn-outline" type="button" onClick={() => handleStatusChange('closed')}>
+                    Close event
+                  </button>
+                </>
+              )}
+              {status === 'completed' && (
+                <button className="btn btn-outline" type="button" onClick={() => handleStatusChange('closed')}>
+                  Close event
                 </button>
               )}
             </div>
@@ -313,25 +335,25 @@ const OrganizerEventForm = () => {
                   <label className="label" htmlFor="tags">
                     <span className="label-text">Tags</span>
                   </label>
-                  <select
+                  <input
                     id="tags"
                     name="tags"
-                    className="select select-bordered"
-                    multiple
-                    value={form.tags}
+                    type="text"
+                    placeholder="Enter tags separated by commas (e.g., tech, fun, beginner)"
+                    className="input input-bordered"
+                    value={tagsInput}
                     onChange={handleTagChange}
                     disabled={isEditing && !canEditDraft}
-                  >
-                    <option value="tech">Tech</option>
-                    <option value="sports">Sports</option>
-                    <option value="design">Design</option>
-                    <option value="dance">Dance</option>
-                    <option value="music">Music</option>
-                    <option value="quiz">Quiz</option>
-                    <option value="concert">Concert</option>
-                    <option value="gaming">Gaming</option>
-                    <option value="misc">Misc</option>
-                  </select>
+                  />
+                  {form.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {form.tags.map((tag) => (
+                        <span key={tag} className="badge badge-primary">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -382,10 +404,202 @@ const OrganizerEventForm = () => {
             </div>
           </div>
 
+          {form.eventType === 'merchandise' && (
+            <div className="card bg-base-100 shadow">
+              <div className="card-body space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Merchandise Items</h2>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        merchandise: {
+                          ...prev.merchandise,
+                          items: [
+                            ...(prev.merchandise?.items || []),
+                            { name: '', purchaseLimit: 1, variants: [] }
+                          ]
+                        }
+                      }))
+                    }
+                    disabled={isEditing && !canEditDraft}
+                  >
+                    Add Item
+                  </button>
+                </div>
+                {!form.merchandise?.items?.length && (
+                  <p className="text-sm text-base-content/60">No merchandise items added yet.</p>
+                )}
+                <div className="space-y-4">
+                  {form.merchandise?.items?.map((item, itemIndex) => (
+                    <div key={itemIndex} className="card bg-base-200">
+                      <div className="card-body space-y-3">
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div className="form-control">
+                            <label className="label">
+                              <span className="label-text">Item Name</span>
+                            </label>
+                            <input
+                              className="input input-bordered"
+                              value={item.name}
+                              onChange={(e) =>
+                                setForm((prev) => {
+                                  const newItems = [...(prev.merchandise?.items || [])]
+                                  newItems[itemIndex] = { ...newItems[itemIndex], name: e.target.value }
+                                  return { ...prev, merchandise: { ...prev.merchandise, items: newItems } }
+                                })
+                              }
+                              disabled={isEditing && !canEditDraft}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label">
+                              <span className="label-text">Purchase Limit per Person</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              className="input input-bordered"
+                              value={item.purchaseLimit}
+                              onChange={(e) =>
+                                setForm((prev) => {
+                                  const newItems = [...(prev.merchandise?.items || [])]
+                                  newItems[itemIndex] = {
+                                    ...newItems[itemIndex],
+                                    purchaseLimit: parseInt(e.target.value) || 1
+                                  }
+                                  return { ...prev, merchandise: { ...prev.merchandise, items: newItems } }
+                                })
+                              }
+                              disabled={isEditing && !canEditDraft}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="divider text-xs">Variants</div>
+
+                        {item.variants?.map((variant, variantIndex) => (
+                            <div key={variantIndex} className="flex gap-2 items-end">
+                            <div className="form-control flex-1">
+                              <label className="label">
+                                <span className="label-text">Label</span>
+                              </label>
+                              <input
+                                className="input input-bordered input-sm"
+                                value={variant.label}
+                                onChange={(e) =>
+                                  setForm((prev) => {
+                                    const newItems = [...(prev.merchandise?.items || [])]
+                                    const newVariants = [...(newItems[itemIndex].variants || [])]
+                                    newVariants[variantIndex] = {
+                                      ...newVariants[variantIndex],
+                                      label: e.target.value
+                                    }
+                                    newItems[itemIndex] = { ...newItems[itemIndex], variants: newVariants }
+                                    return { ...prev, merchandise: { ...prev.merchandise, items: newItems } }
+                                  })
+                                }
+                                disabled={isEditing && !canEditDraft}
+                              />
+                              <span className="text-xs text-base-content/60 mt-1">
+                                e.g. Size/Color
+                              </span>
+                            </div>
+                            <div className="form-control w-24">
+                              <label className="label">
+                                <span className="label-text">Stock</span>
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                className="input input-bordered input-sm"
+                                value={variant.stock}
+                                onChange={(e) =>
+                                  setForm((prev) => {
+                                    const newItems = [...(prev.merchandise?.items || [])]
+                                    const newVariants = [...(newItems[itemIndex].variants || [])]
+                                    newVariants[variantIndex] = {
+                                      ...newVariants[variantIndex],
+                                      stock: parseInt(e.target.value) || 0
+                                    }
+                                    newItems[itemIndex] = { ...newItems[itemIndex], variants: newVariants }
+                                    return { ...prev, merchandise: { ...prev.merchandise, items: newItems } }
+                                  })
+                                }
+                                disabled={isEditing && !canEditDraft}
+                              />
+                            </div>
+                            <button
+                              className="btn btn-ghost btn-sm text-error"
+                              type="button"
+                              onClick={() =>
+                                setForm((prev) => {
+                                  const newItems = [...(prev.merchandise?.items || [])]
+                                  newItems[itemIndex].variants = newItems[itemIndex].variants.filter(
+                                    (_, i) => i !== variantIndex
+                                  )
+                                  return { ...prev, merchandise: { ...prev.merchandise, items: newItems } }
+                                })
+                              }
+                              disabled={isEditing && !canEditDraft}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+
+                        <button
+                          className="btn btn-outline btn-xs gap-2"
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => {
+                              const newItems = [...(prev.merchandise?.items || [])]
+                              newItems[itemIndex].variants = [
+                                ...(newItems[itemIndex].variants || []),
+                                { label: '', stock: 0 }
+                              ]
+                              return { ...prev, merchandise: { ...prev.merchandise, items: newItems } }
+                            })
+                          }
+                          disabled={isEditing && !canEditDraft}
+                        >
+                          + Add Variant
+                        </button>
+
+                        <div className="card-actions justify-end mt-2">
+                          <button
+                            className="btn btn-sm btn-error btn-outline"
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => {
+                                const newItems = prev.merchandise.items.filter((_, i) => i !== itemIndex)
+                                return { ...prev, merchandise: { ...prev.merchandise, items: newItems } }
+                              })
+                            }
+                            disabled={isEditing && !canEditDraft}
+                          >
+                            Remove Item
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card bg-base-100 shadow">
             <div className="card-body space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Custom registration form</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">Custom registration form</h2>
+                  {isEditing && !canEditDraft && (
+                    <p className="text-xs text-warning mt-1">📋 Form is locked (registrations received)</p>
+                  )}
+                </div>
                 <button className="btn btn-outline btn-sm" type="button" onClick={addField} disabled={isEditing && !canEditDraft}>
                   Add field
                 </button>
@@ -395,7 +609,7 @@ const OrganizerEventForm = () => {
               )}
               <div className="space-y-4">
                 {form.customForm.map((field, index) => (
-                  <div key={`${field.label}-${index}`} className="card bg-base-200">
+                  <div key={index} className="card bg-base-200">
                     <div className="card-body space-y-3">
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="form-control">
@@ -422,43 +636,50 @@ const OrganizerEventForm = () => {
                             <option value="text">Text</option>
                             <option value="textarea">Textarea</option>
                             <option value="dropdown">Dropdown</option>
+                            <option value="radio">Radio</option>
                             <option value="checkbox">Checkbox</option>
                             <option value="file">File upload</option>
                           </select>
                         </div>
                       </div>
                       <div className="form-control">
-                        <label className="label cursor-pointer">
+                        <label className="label" htmlFor={`required-${index}`}>
                           <span className="label-text">Required</span>
-                          <input
-                            type="checkbox"
-                            className="toggle"
-                            checked={field.required}
-                            onChange={(event) => updateField(index, 'required', event.target.checked)}
-                            disabled={isEditing && !canEditDraft}
-                          />
                         </label>
+                        <input
+                          id={`required-${index}`}
+                          type="checkbox"
+                          className="toggle"
+                          checked={field.required}
+                          onChange={(event) => updateField(index, 'required', event.target.checked)}
+                          disabled={isEditing && !canEditDraft}
+                        />
                       </div>
-                      {(field.fieldType === 'dropdown' || field.fieldType === 'checkbox') && (
+                      {(field.fieldType === 'dropdown' || field.fieldType === 'checkbox' || field.fieldType === 'radio') && (
                         <div className="form-control">
                           <label className="label">
-                            <span className="label-text">Options (comma separated)</span>
+                            <span className="label-text">Options</span>
                           </label>
                           <input
                             className="input input-bordered"
-                            value={field.options?.join(',') || ''}
-                            onChange={(event) =>
+                            value={field.optionsInput || ''}
+                            onChange={(event) => {
+                              const rawValue = event.target.value
+                              updateField(index, 'optionsInput', rawValue)
                               updateField(
                                 index,
                                 'options',
-                                event.target.value
+                                rawValue
                                   .split(',')
                                   .map((item) => item.trim())
                                   .filter(Boolean)
                               )
-                            }
+                            }}
                             disabled={isEditing && !canEditDraft}
                           />
+                          <span className="text-xs text-base-content/60 mt-1">
+                            Comma separated
+                          </span>
                         </div>
                       )}
                       <div className="flex flex-wrap gap-2">
@@ -480,7 +701,7 @@ const OrganizerEventForm = () => {
           </div>
 
           <div className="flex justify-end gap-3">
-            <button className="btn btn-primary" type="submit" disabled={saving}>
+            <button className="btn btn-success" type="submit" disabled={saving}>
               {saving ? 'Saving...' : 'Save event'}
             </button>
           </div>

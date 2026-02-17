@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const navLinkClass = ({ isActive }) =>
-  `btn btn-ghost btn-sm ${isActive ? 'btn-active' : ''}`
+  `lb-nav-link ${isActive ? 'lb-nav-link--active' : ''}`
 
 const OrganiserNavbar = () => {
   const { profile, logout } = useAuth()
@@ -15,35 +15,33 @@ const OrganiserNavbar = () => {
   }
 
   return (
-    <div className="navbar bg-base-100 shadow">
-      <div className="flex-1">
-        <Link className="btn btn-ghost text-lg" to="/organiser">
+    <header className="lb-header">
+      <div className="lb-header-inner">
+        <Link className="lb-logo" to="/organiser">
           Felicity
         </Link>
+        <nav className="lb-nav">
+          <NavLink to="/organiser" className={navLinkClass} end>
+            Dashboard
+          </NavLink>
+          <NavLink to="/organiser/events/new" className={navLinkClass}>
+            Create Event
+          </NavLink>
+          <NavLink to="/organiser/ongoing" className={navLinkClass}>
+            Ongoing Events
+          </NavLink>
+          <NavLink to="/organiser/profile" className={navLinkClass}>
+            Profile
+          </NavLink>
+        </nav>
+        <div className="lb-actions">
+          <button className="lb-button" type="button" onClick={handleLogout}>
+            Logout
+          </button>
+          {profile?.name && <span className="lb-user">Hi, {profile.name}</span>}
+        </div>
       </div>
-      <div className="flex-none gap-2">
-        <NavLink to="/organiser" className={navLinkClass}>
-          Dashboard
-        </NavLink>
-        <NavLink to="/organiser/events/new" className={navLinkClass}>
-          Create Event
-        </NavLink>
-        <NavLink to="/organiser/ongoing" className={navLinkClass}>
-          Ongoing Events
-        </NavLink>
-        <NavLink to="/organiser/profile" className={navLinkClass}>
-          Profile
-        </NavLink>
-        <button className="btn btn-outline btn-sm" type="button" onClick={handleLogout}>
-          Logout
-        </button>
-        {profile?.name && (
-          <span className="hidden md:inline text-sm text-base-content/60">
-            Hi, {profile.name}
-          </span>
-        )}
-      </div>
-    </div>
+    </header>
   )
 }
 

@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext'
 const navLinkClass = ({ isActive }) =>
   `lb-nav-link ${isActive ? 'lb-nav-link--active' : ''}`
 
-const ParticipantNavbar = () => {
-  const { profile, logout } = useAuth()
+const AdminNavbar = () => {
+  const { logout } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -17,34 +17,28 @@ const ParticipantNavbar = () => {
   return (
     <header className="lb-header">
       <div className="lb-header-inner">
-        <Link className="lb-logo" to="/">
-          Felicity
+        <Link className="lb-logo" to="/admin">
+          Felicity Admin
         </Link>
         <nav className="lb-nav">
-          <NavLink to="/" className={navLinkClass} end>
+          <NavLink to="/admin" className={navLinkClass} end>
             Dashboard
           </NavLink>
-          <NavLink to="/events" className={navLinkClass}>
-            Browse Events
+          <NavLink to="/admin/organisers" className={navLinkClass}>
+            Manage Clubs/Organizers
           </NavLink>
-          <NavLink to="/clubs" className={navLinkClass}>
-            Clubs/Organizers
-          </NavLink>
-          <NavLink to="/profile" className={navLinkClass}>
-            Profile
+          <NavLink to="/admin/password-resets" className={navLinkClass}>
+            Password Reset Requests
           </NavLink>
         </nav>
         <div className="lb-actions">
           <button className="lb-button" type="button" onClick={handleLogout}>
             Logout
           </button>
-          {profile?.firstName && (
-            <span className="lb-user">Hi, {profile.firstName}</span>
-          )}
         </div>
       </div>
     </header>
   )
 }
 
-export default ParticipantNavbar
+export default AdminNavbar

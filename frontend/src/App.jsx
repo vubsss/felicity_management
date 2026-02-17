@@ -4,11 +4,13 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import ParticipantNavbar from './components/ParticipantNavbar'
 import OrganiserNavbar from './components/OrganiserNavbar'
+import AdminNavbar from './components/AdminNavbar'
 import Dashboard from './pages/Dashboard'
 import BrowseEvents from './pages/BrowseEvents'
 import EventDetails from './pages/EventDetails'
 import MyEvents from './pages/MyEvents'
 import Clubs from './pages/Clubs'
+import OrganizerDetails from './pages/OrganizerDetails'
 import Profile from './pages/Profile'
 import TicketDetails from './pages/TicketDetails'
 import OrganizerDashboard from './pages/OrganizerDashboard'
@@ -16,6 +18,9 @@ import OrganizerEvents from './pages/OrganizerEvents'
 import OrganizerEventForm from './pages/OrganizerEventForm'
 import OrganizerEventDetails from './pages/OrganizerEventDetails'
 import OrganizerProfile from './pages/OrganizerProfile'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminOrganisers from './pages/AdminOrganisers'
+import AdminPasswordResets from './pages/AdminPasswordResets'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 
@@ -24,7 +29,7 @@ const ProtectedRoute = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-base-200 flex items-center justify-center">
+      <div className="lb-page lb-center">
         <span className="loading loading-spinner loading-lg" />
       </div>
     )
@@ -54,6 +59,7 @@ const AuthLayout = ({ children }) => {
     <>
       {role === 'participant' && <ParticipantNavbar />}
       {role === 'organiser' && <OrganiserNavbar />}
+      {role === 'admin' && <AdminNavbar />}
       {children}
     </>
   )
@@ -61,7 +67,7 @@ const AuthLayout = ({ children }) => {
 
 const App = () => {
   return (
-    <div>
+    <div className="lb-app">
       <Routes>
         <Route
           path="/"
@@ -158,6 +164,42 @@ const App = () => {
           }
         />
         <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AuthLayout>
+                <RoleRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </RoleRoute>
+              </AuthLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/organisers"
+          element={
+            <ProtectedRoute>
+              <AuthLayout>
+                <RoleRoute allowedRoles={['admin']}>
+                  <AdminOrganisers />
+                </RoleRoute>
+              </AuthLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/password-resets"
+          element={
+            <ProtectedRoute>
+              <AuthLayout>
+                <RoleRoute allowedRoles={['admin']}>
+                  <AdminPasswordResets />
+                </RoleRoute>
+              </AuthLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/events"
           element={
             <ProtectedRoute>
@@ -196,6 +238,18 @@ const App = () => {
               <AuthLayout>
                 <RoleRoute allowedRoles={['participant']}>
                   <Clubs />
+                </RoleRoute>
+              </AuthLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/clubs/:id"
+          element={
+            <ProtectedRoute>
+              <AuthLayout>
+                <RoleRoute allowedRoles={['participant']}>
+                  <OrganizerDetails />
                 </RoleRoute>
               </AuthLayout>
             </ProtectedRoute>

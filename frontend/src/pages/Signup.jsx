@@ -51,7 +51,7 @@ const Signup = () => {
   const showOrganisation = form.participantType === 'external'
 
   return (
-    <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+    <div className="lb-page lb-center">
       <div className="card w-full max-w-4xl bg-base-100 shadow-xl">
         <div className="card-body p-8">
           <h1 className="text-2xl font-semibold">Create account</h1>
@@ -182,7 +182,7 @@ const Signup = () => {
                 required
               />
             </div>
-            <button className="btn btn-primary w-full" type="submit" disabled={isSubmitting}>
+            <button className="btn btn-success w-full" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Creating account...' : 'Create account'}
             </button>
           </form>

@@ -71,12 +71,12 @@ const OrganizerEventDetails = () => {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-base-200 p-6">Loading event...</div>
+    return <div className="lb-page">Loading event...</div>
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-base-200 p-6">
+      <div className="lb-page">
         <div className="alert alert-error"><span>{error}</span></div>
       </div>
     )
@@ -85,7 +85,7 @@ const OrganizerEventDetails = () => {
   if (!event) return null
 
   return (
-    <div className="min-h-screen bg-base-200 p-6">
+    <div className="lb-page">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -134,24 +134,52 @@ const OrganizerEventDetails = () => {
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <input
-              name="search"
-              className="input input-bordered"
-              placeholder="Search name or email"
-              value={filters.search}
-              onChange={handleFilterChange}
-            />
-            <select name="status" className="select select-bordered" value={filters.status} onChange={handleFilterChange}>
-              <option value="all">All statuses</option>
-              <option value="registered">Registered</option>
-              <option value="purchased">Purchased</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <select name="type" className="select select-bordered" value={filters.type} onChange={handleFilterChange}>
-              <option value="all">All types</option>
-              <option value="normal">Normal</option>
-              <option value="merchandise">Merchandise</option>
-            </select>
+            <div className="form-control">
+              <label className="label" htmlFor="participantSearch">
+                <span className="label-text">Search</span>
+              </label>
+              <input
+                id="participantSearch"
+                name="search"
+                className="input input-bordered"
+                placeholder="Search name or email"
+                value={filters.search}
+                onChange={handleFilterChange}
+              />
+            </div>
+            <div className="form-control">
+              <label className="label" htmlFor="participantStatus">
+                <span className="label-text">Status</span>
+              </label>
+              <select
+                id="participantStatus"
+                name="status"
+                className="select select-bordered"
+                value={filters.status}
+                onChange={handleFilterChange}
+              >
+                <option value="all">All statuses</option>
+                <option value="registered">Registered</option>
+                <option value="purchased">Purchased</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="form-control">
+              <label className="label" htmlFor="participantType">
+                <span className="label-text">Type</span>
+              </label>
+              <select
+                id="participantType"
+                name="type"
+                className="select select-bordered"
+                value={filters.type}
+                onChange={handleFilterChange}
+              >
+                <option value="all">All types</option>
+                <option value="normal">Normal</option>
+                <option value="merchandise">Merchandise</option>
+              </select>
+            </div>
           </div>
 
           {participantError && <div className="alert alert-error"><span>{participantError}</span></div>}

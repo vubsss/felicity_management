@@ -34,14 +34,14 @@ const OrganizerDashboard = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-base-200 p-6">
+    <div className="lb-page">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">Organizer dashboard</h1>
             <p className="text-sm text-base-content/70">Manage your events and analytics.</p>
           </div>
-          <Link className="btn btn-primary" to="/organiser/events/new">
+          <Link className="btn btn-success" to="/organiser/events/new">
             Create event
           </Link>
         </div>

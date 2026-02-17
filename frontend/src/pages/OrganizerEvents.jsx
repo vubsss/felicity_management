@@ -37,21 +37,28 @@ const OrganizerEvents = ({ defaultStatus = 'all' }) => {
   }
 
   return (
-    <div className="min-h-screen bg-base-200 p-6">
+    <div className="lb-page">
       <div className="max-w-6xl mx-auto space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">Events</h1>
             <p className="text-sm text-base-content/70">Track drafts, published, and ongoing events.</p>
           </div>
-          <Link className="btn btn-primary" to="/organiser/events/new">
+          <Link className="btn btn-success" to="/organiser/events/new">
             Create event
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
-          <label className="text-sm">Filter by status</label>
-          <select className="select select-bordered" value={statusFilter} onChange={handleFilterChange}>
+        <div className="form-control max-w-xs">
+          <label className="label" htmlFor="statusFilter">
+            <span className="label-text">Filter by status</span>
+          </label>
+          <select
+            id="statusFilter"
+            className="select select-bordered"
+            value={statusFilter}
+            onChange={handleFilterChange}
+          >
             <option value="all">All</option>
             <option value="draft">Draft</option>
             <option value="published">Published</option>
