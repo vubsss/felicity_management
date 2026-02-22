@@ -10,6 +10,24 @@ const emptyField = () => ({
 	optionsInput: ''
 })
 
+const resolveRegistrationStatus = (event) => {
+	if (event?.registrationStatus === 'open' || event?.registrationStatus === 'closed') {
+		return event.registrationStatus
+	}
+
+	if (!event) return 'open'
+
+	if (['draft', 'closed', 'completed'].includes(event.status)) {
+		return 'closed'
+	}
+
+	if (event.registrationDeadline && new Date(event.registrationDeadline) < new Date()) {
+		return 'closed'
+	}
+
+	return 'open'
+}
+
 const OrganizerEventForm = () => {
 	const { id } = useParams()
 	const navigate = useNavigate()
@@ -58,7 +76,7 @@ const OrganizerEventForm = () => {
 				})
 				setTagsInput((event.tags || []).join(', '))
 				setStatus(event.status)
-				setRegistrationStatus(event.registrationStatus || 'closed')
+				setRegistrationStatus(resolveRegistrationStatus(event))
 			} catch (err) {
 				setError(err?.response?.data?.message || 'Unable to load event.')
 			} finally {
@@ -164,7 +182,7 @@ const OrganizerEventForm = () => {
 		try {
 			const response = await apiClient.post(`/api/organisers/events/${id}/publish`)
 			setStatus(response.data.event.status)
-			setRegistrationStatus(response.data.event.registrationStatus || 'closed')
+			setRegistrationStatus(resolveRegistrationStatus(response.data.event))
 		} catch (err) {
 			setActionError(err?.response?.data?.message || 'Unable to publish event.')
 		}
@@ -175,7 +193,7 @@ const OrganizerEventForm = () => {
 		try {
 			const response = await apiClient.post(`/api/organisers/events/${id}/status`, payload)
 			setStatus(response.data.event.status)
-			setRegistrationStatus(response.data.event.registrationStatus || 'closed')
+			setRegistrationStatus(resolveRegistrationStatus(response.data.event))
 		} catch (err) {
 			setActionError(err?.response?.data?.message || 'Unable to update status.')
 		}
