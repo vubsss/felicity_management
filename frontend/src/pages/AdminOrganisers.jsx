@@ -113,165 +113,167 @@ const AdminOrganisers = () => {
           </div>
         )}
 
-        <form className="card bg-base-100 shadow" onSubmit={handleCreate}>
-          <div className="card-body space-y-4">
-            <h2 className="text-lg font-semibold">Add new organizer</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="form-control">
-                <label className="label" htmlFor="name">
-                  <span className="label-text">Name</span>
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  className="input input-bordered"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                />
+        <div className="space-y-6">
+          <form className="card bg-base-100 shadow" onSubmit={handleCreate}>
+            <div className="card-body space-y-4">
+              <h2 className="text-lg font-semibold">Add new organizer</h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="form-control">
+                  <label className="label" htmlFor="name">
+                    <span className="label-text">Name</span>
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    className="input input-bordered"
+                    value={form.name}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label" htmlFor="category">
+                    <span className="label-text">Category</span>
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    className="select select-bordered"
+                    value={form.category}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="tech">Tech</option>
+                    <option value="sports">Sports</option>
+                    <option value="design">Design</option>
+                    <option value="dance">Dance</option>
+                    <option value="music">Music</option>
+                    <option value="quiz">Quiz</option>
+                    <option value="concert">Concert</option>
+                    <option value="gaming">Gaming</option>
+                    <option value="misc">Misc</option>
+                  </select>
+                </div>
               </div>
               <div className="form-control">
-                <label className="label" htmlFor="category">
-                  <span className="label-text">Category</span>
+                <label className="label" htmlFor="description">
+                  <span className="label-text">Description</span>
                 </label>
-                <select
-                  id="category"
-                  name="category"
-                  className="select select-bordered"
-                  value={form.category}
+                <textarea
+                  id="description"
+                  name="description"
+                  className="textarea textarea-bordered"
+                  rows={3}
+                  value={form.description}
                   onChange={handleChange}
-                  required
-                >
-                  <option value="tech">Tech</option>
-                  <option value="sports">Sports</option>
-                  <option value="design">Design</option>
-                  <option value="dance">Dance</option>
-                  <option value="music">Music</option>
-                  <option value="quiz">Quiz</option>
-                  <option value="concert">Concert</option>
-                  <option value="gaming">Gaming</option>
-                  <option value="misc">Misc</option>
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="form-control">
+                  <label className="label" htmlFor="contactEmail">
+                    <span className="label-text">Contact email</span>
+                  </label>
+                  <input
+                    id="contactEmail"
+                    name="contactEmail"
+                    type="email"
+                    className="input input-bordered"
+                    value={form.contactEmail}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label" htmlFor="contactNumber">
+                    <span className="label-text">Contact number</span>
+                  </label>
+                  <input
+                    id="contactNumber"
+                    name="contactNumber"
+                    className="input input-bordered"
+                    value={form.contactNumber}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div className="form-control">
+                <label className="label" htmlFor="discordWebhook">
+                  <span className="label-text">Discord webhook</span>
+                </label>
+                <input
+                  id="discordWebhook"
+                  name="discordWebhook"
+                  className="input input-bordered"
+                  value={form.discordWebhook}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="flex justify-end">
+                <button className="btn btn-success" type="submit" disabled={saving}>
+                  {saving ? 'Creating...' : 'Create organizer'}
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div className="card bg-base-100 shadow">
+            <div className="card-body space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">All organizers</h2>
+                <select className="select select-bordered" value={filter} onChange={(e) => setFilter(e.target.value)}>
+                  <option value="all">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
                 </select>
               </div>
-            </div>
-            <div className="form-control">
-              <label className="label" htmlFor="description">
-                <span className="label-text">Description</span>
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                className="textarea textarea-bordered"
-                rows={3}
-                value={form.description}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="form-control">
-                <label className="label" htmlFor="contactEmail">
-                  <span className="label-text">Contact email</span>
-                </label>
-                <input
-                  id="contactEmail"
-                  name="contactEmail"
-                  type="email"
-                  className="input input-bordered"
-                  value={form.contactEmail}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="form-control">
-                <label className="label" htmlFor="contactNumber">
-                  <span className="label-text">Contact number</span>
-                </label>
-                <input
-                  id="contactNumber"
-                  name="contactNumber"
-                  className="input input-bordered"
-                  value={form.contactNumber}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="form-control">
-              <label className="label" htmlFor="discordWebhook">
-                <span className="label-text">Discord webhook</span>
-              </label>
-              <input
-                id="discordWebhook"
-                name="discordWebhook"
-                className="input input-bordered"
-                value={form.discordWebhook}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="flex justify-end">
-              <button className="btn btn-success" type="submit" disabled={saving}>
-                {saving ? 'Creating...' : 'Create organizer'}
-              </button>
-            </div>
-          </div>
-        </form>
 
-        <div className="card bg-base-100 shadow">
-          <div className="card-body space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">All organizers</h2>
-              <select className="select select-bordered" value={filter} onChange={(e) => setFilter(e.target.value)}>
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
+              {loading && <p>Loading organizers...</p>}
 
-            {loading && <p>Loading organizers...</p>}
-
-            {!loading && (
-              <div className="overflow-x-auto">
-                <table className="table table-zebra">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Category</th>
-                      <th>Login email</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((organiser) => (
-                      <tr key={organiser.id}>
-                        <td>{organiser.name}</td>
-                        <td>{organiser.category}</td>
-                        <td>{organiser.loginEmail}</td>
-                        <td>{organiser.status}</td>
-                        <td>
-                          <div className="flex flex-wrap gap-2">
-                            {organiser.status === 'archived' && (
-                              <button className="btn btn-xs btn-success" onClick={() => updateStatus(organiser.id, 'active')}>
-                                Restore
-                              </button>
-                            )}
-                            {organiser.status !== 'archived' && (
-                              <button className="btn btn-xs btn-outline" onClick={() => updateStatus(organiser.id, 'archived')}>
-                                Archive
-                              </button>
-                            )}
-                            <button className="btn btn-xs btn-outline" onClick={() => handleReset(organiser.id)}>
-                              Reset password
-                            </button>
-                            <button className="btn btn-xs btn-error" onClick={() => handleDelete(organiser.id)}>
-                              Delete
-                            </button>
-                          </div>
-                        </td>
+              {!loading && (
+                <div className="overflow-x-auto">
+                  <table className="table table-zebra">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Login email</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {filtered.map((organiser) => (
+                        <tr key={organiser.id}>
+                          <td>{organiser.name}</td>
+                          <td>{organiser.category}</td>
+                          <td>{organiser.loginEmail}</td>
+                          <td>{organiser.status}</td>
+                          <td>
+                            <div className="flex flex-wrap gap-2">
+                              {organiser.status === 'archived' && (
+                                <button className="btn btn-xs btn-success" onClick={() => updateStatus(organiser.id, 'active')}>
+                                  Restore
+                                </button>
+                              )}
+                              {organiser.status !== 'archived' && (
+                                <button className="btn btn-xs btn-outline" onClick={() => updateStatus(organiser.id, 'archived')}>
+                                  Archive
+                                </button>
+                              )}
+                              <button className="btn btn-xs btn-outline" onClick={() => handleReset(organiser.id)}>
+                                Reset password
+                              </button>
+                              <button className="btn btn-xs btn-error" onClick={() => handleDelete(organiser.id)}>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

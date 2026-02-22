@@ -39,6 +39,10 @@ const participantSchema = new mongoose.Schema({
         type: [mongoose.Schema.Types.ObjectId],
         ref: 'Organiser',
         default: []
+    },
+    onboardingCompleted: {
+        type: Boolean,
+        default: true
     }
 }, { timestamps: true });
 

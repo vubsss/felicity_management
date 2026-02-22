@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
+import { formatDateTime } from '../utils/dateFormat'
 
 const initialFilters = {
   search: '',
@@ -27,7 +28,7 @@ const BrowseEvents = () => {
           interests: response.data.interests || [],
           followedOrganisers: response.data.followedOrganisers || []
         })
-      } catch (err) {
+      } catch {
         setPreferences({ interests: [], followedOrganisers: [] })
       }
     }
@@ -252,7 +253,7 @@ const BrowseEvents = () => {
                   </div>
                   {event.startTime && (
                     <div className="text-xs text-base-content/60">
-                      {new Date(event.startTime).toLocaleString()}
+                      {formatDateTime(event.startTime)}
                     </div>
                   )}
                 </div>

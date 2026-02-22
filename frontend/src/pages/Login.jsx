@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
-import { getRecaptchaToken } from '../utils/recaptcha'
+import { getRecaptchaToken, prewarmRecaptcha } from '../utils/recaptcha'
 import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
@@ -13,6 +13,10 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
   const { refreshAuth } = useAuth()
+
+  useEffect(() => {
+    prewarmRecaptcha().catch(() => {})
+  }, [])
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -30,20 +34,6 @@ const Login = () => {
       localStorage.setItem('token', token)
       localStorage.setItem('role', role)
       await refreshAuth()
-      if (role === 'participant') {
-        try {
-          const prefsResponse = await apiClient.get('/api/participants/preferences')
-          const interests = prefsResponse.data?.interests || []
-          if (!interests.length) {
-            navigate('/profile?onboarding=1')
-            return
-          }
-        } catch (prefsError) {
-          // Fall back to profile if preferences cannot be loaded
-          navigate('/profile?onboarding=1')
-          return
-        }
-      }
       navigate('/')
     } catch (err) {
       const message = err?.response?.data?.message || 'Unable to sign in. Try again.'

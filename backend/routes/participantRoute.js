@@ -9,6 +9,7 @@ const {
     updatePreferences,
     getRegistrations,
     getTicket,
+    cancelRegistration,
     followOrganiser,
     unfollowOrganiser
 } = require('../controllers/participantController');
@@ -21,6 +22,7 @@ router.get('/me', authJWT, requireRole(['participant']), getProfile);
 router.put('/me', authJWT, requireRole(['participant']), updateProfile);
 router.post('/password', authJWT, requireRole(['participant']), changePassword);
 router.get('/registrations', authJWT, requireRole(['participant']), getRegistrations);
+router.post('/registrations/:id/cancel', authJWT, requireRole(['participant']), cancelRegistration);
 router.get('/tickets/:id', authJWT, requireRole(['participant']), getTicket);
 router.post('/follow/:id', authJWT, requireRole(['participant']), followOrganiser);
 router.delete('/follow/:id', authJWT, requireRole(['participant']), unfollowOrganiser);

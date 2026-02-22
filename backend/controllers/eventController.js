@@ -6,6 +6,7 @@ const User = require('../models/User');
 const Registration = require('../models/Registration');
 const Ticket = require('../models/Ticket');
 const { sendTicketEmail } = require('../utils/mailer');
+const { computeDisplayStatus, computeRegistrationStatus, isRegistrationClosed } = require('../utils/eventStatus');
 
 const browseSchema = z.object({
     search: z.string().optional(),
@@ -33,7 +34,45 @@ const purchaseSchema = z.object({
     )
 });
 
+const uploadPaymentProofSchema = z.object({
+    registrationId: z.string().min(1)
+});
+
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const parseObjectIdString = (value) => String(value);
+
+const validateMerchandiseSelection = (event, items) => {
+    const normalized = [];
+
+    for (const item of items) {
+        const eventItem = event.merchandise?.items?.find((i) => i.name === item.itemName);
+        if (!eventItem) {
+            return { ok: false, message: `Item not found: ${item.itemName}` };
+        }
+
+        const variant = eventItem.variants.find((v) => v.label === item.variantLabel);
+        if (!variant) {
+            return { ok: false, message: `Variant not found: ${item.variantLabel}` };
+        }
+
+        if (item.quantity > (eventItem.purchaseLimit || 1)) {
+            return { ok: false, message: `Purchase limit exceeded for ${item.itemName}` };
+        }
+
+        if (variant.stock < item.quantity) {
+            return { ok: false, message: `Out of stock: ${item.itemName}` };
+        }
+
+        normalized.push({
+            itemName: item.itemName,
+            variantLabel: item.variantLabel,
+            quantity: item.quantity
+        });
+    }
+
+    return { ok: true, items: normalized };
+};
 
 const buildTicket = async ({ eventId, participantId }) => {
     const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -101,6 +140,12 @@ const browseEvents = async (req, res, next) => {
             .sort({ startTime: 1 })
             .lean();
 
+        events = events.map((event) => ({
+            ...event,
+            displayStatus: computeDisplayStatus(event),
+            registrationStatus: computeRegistrationStatus(event)
+        }));
+
         if (trending === 'true') {
             const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
             const registrations = await Registration.aggregate([
@@ -135,7 +180,11 @@ const getEvent = async (req, res, next) => {
             : null;
 
         return res.json({
-            event,
+            event: {
+                ...event,
+                displayStatus: computeDisplayStatus(event),
+                registrationStatus: computeRegistrationStatus(event)
+            },
             registrationCount,
             remainingSpots
         });
@@ -218,11 +267,8 @@ const registerForEvent = async (req, res, next) => {
         if (event.eventType !== 'normal') {
             return res.status(400).json({ message: 'Not a normal event' });
         }
-        if (event.status === 'draft' || event.status === 'closed' || event.status === 'completed') {
+        if (isRegistrationClosed(event)) {
             return res.status(400).json({ message: 'Registration is closed for this event' });
-        }
-        if (new Date(event.registrationDeadline) < new Date()) {
-            return res.status(400).json({ message: 'Registration deadline passed' });
         }
 
         const participant = await Participant.findOne({ userId: req.user.userId });
@@ -307,11 +353,8 @@ const purchaseMerchandise = async (req, res, next) => {
         if (event.eventType !== 'merchandise') {
             return res.status(400).json({ message: 'Not a merchandise event' });
         }
-        if (event.status === 'draft' || event.status === 'closed' || event.status === 'completed') {
+        if (isRegistrationClosed(event)) {
             return res.status(400).json({ message: 'Purchases are closed for this event' });
-        }
-        if (new Date(event.registrationDeadline) < new Date()) {
-            return res.status(400).json({ message: 'Purchase deadline passed' });
         }
 
         const participant = await Participant.findOne({ userId: req.user.userId });
@@ -323,45 +366,102 @@ const purchaseMerchandise = async (req, res, next) => {
             return res.status(403).json({ message: 'Not eligible for this event' });
         }
 
-        const updates = [];
-        for (const item of parsed.data.items) {
-            const eventItem = event.merchandise?.items?.find((i) => i.name === item.itemName);
-            if (!eventItem) {
-                return res.status(400).json({ message: `Item not found: ${item.itemName}` });
-            }
-            const variant = eventItem.variants.find((v) => v.label === item.variantLabel);
-            if (!variant) {
-                return res.status(400).json({ message: `Variant not found: ${item.variantLabel}` });
-            }
-            if (item.quantity > eventItem.purchaseLimit) {
-                return res.status(400).json({ message: `Purchase limit exceeded for ${item.itemName}` });
-            }
-            if (variant.stock < item.quantity) {
-                return res.status(400).json({ message: `Out of stock: ${item.itemName}` });
-            }
-            updates.push({ variant, quantity: item.quantity });
+        const validation = validateMerchandiseSelection(event, parsed.data.items);
+        if (!validation.ok) {
+            return res.status(400).json({ message: validation.message });
         }
 
-        updates.forEach(({ variant, quantity }) => {
-            variant.stock -= quantity;
-        });
-        await event.save();
-
-        const ticket = await buildTicket({ eventId: event._id, participantId: participant._id });
         const registration = new Registration({
             eventId: event._id,
             participantId: participant._id,
             type: 'merchandise',
-            status: 'purchased',
-            orderItems: parsed.data.items,
-            ticketId: ticket._id
+            status: 'pending_payment',
+            paymentStatus: 'not_submitted',
+            orderItems: validation.items
         });
         await registration.save();
 
-        return res.status(201).json({ registration, ticket });
+        return res.status(201).json({
+            message: 'Order created. Upload payment proof for approval.',
+            registration
+        });
     } catch (error) {
         return next(error);
     }
 };
 
-module.exports = { browseEvents, getEvent, registerForEvent, purchaseMerchandise, validateFormSubmission };
+const uploadMerchandisePaymentProof = async (req, res, next) => {
+    const parsed = uploadPaymentProofSchema.safeParse(req.params || {});
+    if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid registration id' });
+    }
+
+    if (!req.file) {
+        return res.status(400).json({ message: 'Payment proof image is required' });
+    }
+
+    if (!String(req.file.mimetype || '').startsWith('image/')) {
+        return res.status(400).json({ message: 'Payment proof must be an image file' });
+    }
+
+    try {
+        const participant = await Participant.findOne({ userId: req.user.userId });
+        if (!participant) {
+            return res.status(404).json({ message: 'Participant not found' });
+        }
+
+        const registration = await Registration.findOne({
+            _id: parsed.data.registrationId,
+            participantId: participant._id,
+            type: 'merchandise'
+        });
+
+        if (!registration) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (registration.status === 'successful') {
+            return res.status(400).json({ message: 'Payment already approved for this order' });
+        }
+
+        if (registration.status === 'cancelled') {
+            return res.status(400).json({ message: 'Cancelled orders cannot be updated' });
+        }
+
+        registration.paymentProof = {
+            filename: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            buffer: req.file.buffer.toString('base64'),
+            uploadedAt: new Date()
+        };
+        registration.paymentStatus = 'pending';
+        registration.status = 'pending_approval';
+        registration.paymentReview = {
+            reviewedAt: null,
+            reviewedBy: null,
+            note: ''
+        };
+
+        await registration.save();
+
+        return res.json({
+            message: 'Payment proof uploaded. Order is pending organizer approval.',
+            registration
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+module.exports = {
+    browseEvents,
+    getEvent,
+    registerForEvent,
+    purchaseMerchandise,
+    uploadMerchandisePaymentProof,
+    validateFormSubmission,
+    buildTicket,
+    validateMerchandiseSelection,
+    parseObjectIdString
+};

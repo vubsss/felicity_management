@@ -9,6 +9,10 @@ const eventSchema = new mongoose.Schema({
     publishedAt: {
         type: Date
     },
+    registrationManuallyClosed: {
+        type: Boolean,
+        default: false
+    },
     organiserId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Organiser',

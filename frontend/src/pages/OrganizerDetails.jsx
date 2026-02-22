@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import apiClient from '../api/client'
+import { formatDateTime } from '../utils/dateFormat'
 
 const OrganizerDetails = () => {
   const { id } = useParams()
@@ -89,7 +90,7 @@ const OrganizerDetails = () => {
                     <p className="text-xs text-base-content/60">{event.eventType} · {event.category}</p>
                     {event.startTime && (
                       <p className="text-xs text-base-content/60">
-                        {new Date(event.startTime).toLocaleString()}
+                        {formatDateTime(event.startTime)}
                       </p>
                     )}
                   </div>
@@ -112,7 +113,7 @@ const OrganizerDetails = () => {
                     <p className="text-xs text-base-content/60">{event.eventType} · {event.category}</p>
                     {event.startTime && (
                       <p className="text-xs text-base-content/60">
-                        {new Date(event.startTime).toLocaleString()}
+                        {formatDateTime(event.startTime)}
                       </p>
                     )}
                   </div>

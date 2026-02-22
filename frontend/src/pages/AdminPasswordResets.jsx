@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import apiClient from '../api/client'
+import { formatDateTime } from '../utils/dateFormat'
 
 const AdminPasswordResets = () => {
   const [requests, setRequests] = useState([])
@@ -71,7 +72,7 @@ const AdminPasswordResets = () => {
                         <tr key={request.id}>
                           <td>{request.organiserName}</td>
                           <td>{request.loginEmail}</td>
-                          <td>{new Date(request.createdAt).toLocaleString()}</td>
+                          <td>{formatDateTime(request.createdAt)}</td>
                           <td>
                             <button className="btn btn-xs btn-success" onClick={() => resolveRequest(request.id)}>
                               Reset password

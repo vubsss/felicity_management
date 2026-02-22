@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import apiClient from '../api/client'
+import { formatDateTime } from '../utils/dateFormat'
 
 const OrganizerEvents = ({ defaultStatus = 'all' }) => {
   const [events, setEvents] = useState([])
@@ -84,7 +85,7 @@ const OrganizerEvents = ({ defaultStatus = 'all' }) => {
                     Status: {event.displayStatus || event.status}
                   </p>
                   <p className="text-xs text-base-content/60">
-                    {event.startTime ? new Date(event.startTime).toLocaleString() : 'Schedule pending'}
+                    {event.startTime ? formatDateTime(event.startTime) : 'Schedule pending'}
                   </p>
                 </div>
               </Link>

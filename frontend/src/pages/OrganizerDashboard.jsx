@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
+import { formatDate } from '../utils/dateFormat'
 
 const statusTone = (status) => {
   if (status === 'draft') return 'badge-ghost'
@@ -77,7 +78,7 @@ const OrganizerDashboard = () => {
                           {event.eventType} · {event.category || 'Uncategorized'}
                         </p>
                         <p className="text-xs text-base-content/60">
-                          {event.startTime ? new Date(event.startTime).toLocaleDateString() : 'Schedule pending'}
+                          {event.startTime ? formatDate(event.startTime) : 'Schedule pending'}
                         </p>
                       </div>
                     </Link>

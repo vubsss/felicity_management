@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import apiClient from '../api/client'
+import { formatDateTime } from '../utils/dateFormat'
 
 const TicketDetails = () => {
   const { id } = useParams()
@@ -77,7 +78,7 @@ const TicketDetails = () => {
                 <p className="text-sm"><span className="font-semibold">Organizer:</span> {event.organiserId?.name || 'Organizer'}</p>
                 <p className="text-sm">
                   <span className="font-semibold">Schedule:</span>{' '}
-                  {new Date(event.startTime).toLocaleString()} - {new Date(event.endTime).toLocaleString()}
+                  {formatDateTime(event.startTime)} - {formatDateTime(event.endTime)}
                 </p>
                 <Link className="link link-primary text-sm" to={`/events/${event._id}`}>
                   View event details

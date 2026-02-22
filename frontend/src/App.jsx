@@ -1,5 +1,5 @@
 import React from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useAuth } from './context/AuthContext'
 import ParticipantNavbar from './components/ParticipantNavbar'
@@ -23,6 +23,7 @@ import AdminOrganisers from './pages/AdminOrganisers'
 import AdminPasswordResets from './pages/AdminPasswordResets'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import OnboardingPreferences from './pages/OnboardingPreferences'
 
 const ProtectedRoute = ({ children }) => {
   const { user, isLoading } = useAuth()
@@ -65,6 +66,32 @@ const AuthLayout = ({ children }) => {
   )
 }
 
+const ParticipantOnboardingGate = ({ children }) => {
+  const { role, profile, isLoading } = useAuth()
+  const location = useLocation()
+
+  if (isLoading) {
+    return children
+  }
+
+  if (role !== 'participant') {
+    return children
+  }
+
+  const isOnboardingRoute = location.pathname === '/onboarding/preferences'
+  const onboardingCompleted = profile?.onboardingCompleted !== false
+
+  if (!onboardingCompleted && !isOnboardingRoute) {
+    return <Navigate to="/onboarding/preferences" replace />
+  }
+
+  if (onboardingCompleted && isOnboardingRoute) {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
 const App = () => {
   return (
     <div className="lb-app">
@@ -73,9 +100,11 @@ const App = () => {
           path="/"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <Dashboard />
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <Dashboard />
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />
@@ -203,9 +232,11 @@ const App = () => {
           path="/events"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <BrowseEvents />
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <BrowseEvents />
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />
@@ -213,9 +244,11 @@ const App = () => {
           path="/events/:id"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <EventDetails />
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <EventDetails />
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />
@@ -223,11 +256,13 @@ const App = () => {
           path="/my-events"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <RoleRoute allowedRoles={['participant']}>
-                  <MyEvents />
-                </RoleRoute>
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <RoleRoute allowedRoles={['participant']}>
+                    <MyEvents />
+                  </RoleRoute>
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />
@@ -235,11 +270,13 @@ const App = () => {
           path="/clubs"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <RoleRoute allowedRoles={['participant']}>
-                  <Clubs />
-                </RoleRoute>
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <RoleRoute allowedRoles={['participant']}>
+                    <Clubs />
+                  </RoleRoute>
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />
@@ -247,11 +284,13 @@ const App = () => {
           path="/clubs/:id"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <RoleRoute allowedRoles={['participant']}>
-                  <OrganizerDetails />
-                </RoleRoute>
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <RoleRoute allowedRoles={['participant']}>
+                    <OrganizerDetails />
+                  </RoleRoute>
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />
@@ -259,11 +298,13 @@ const App = () => {
           path="/profile"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <RoleRoute allowedRoles={['participant']}>
-                  <Profile />
-                </RoleRoute>
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <RoleRoute allowedRoles={['participant']}>
+                    <Profile />
+                  </RoleRoute>
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />
@@ -271,11 +312,27 @@ const App = () => {
           path="/tickets/:id"
           element={
             <ProtectedRoute>
-              <AuthLayout>
-                <RoleRoute allowedRoles={['participant']}>
-                  <TicketDetails />
-                </RoleRoute>
-              </AuthLayout>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <RoleRoute allowedRoles={['participant']}>
+                    <TicketDetails />
+                  </RoleRoute>
+                </AuthLayout>
+              </ParticipantOnboardingGate>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/onboarding/preferences"
+          element={
+            <ProtectedRoute>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <RoleRoute allowedRoles={['participant']}>
+                    <OnboardingPreferences />
+                  </RoleRoute>
+                </AuthLayout>
+              </ParticipantOnboardingGate>
             </ProtectedRoute>
           }
         />

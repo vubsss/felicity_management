@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../api/client'
-import { getRecaptchaToken } from '../utils/recaptcha'
+import { getRecaptchaToken, prewarmRecaptcha } from '../utils/recaptcha'
 
 const Signup = () => {
   const [form, setForm] = useState({
@@ -16,6 +16,10 @@ const Signup = () => {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    prewarmRecaptcha().catch(() => {})
+  }, [])
 
   const handleChange = (event) => {
     const { name, value } = event.target

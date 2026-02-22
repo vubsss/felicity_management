@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/client'
+import { formatDateTime } from '../utils/dateFormat'
 
 const formatDateRange = (start, end) => {
   if (!start || !end) return 'Schedule unavailable'
-  const startDate = new Date(start)
-  const endDate = new Date(end)
-  return `${startDate.toLocaleString()} - ${endDate.toLocaleString()}`
+  return `${formatDateTime(start)} - ${formatDateTime(end)}`
 }
 
 const getTeamName = (registration) => {
@@ -25,20 +24,26 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
   const [activeTab, setActiveTab] = useState('normal')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [proofFiles, setProofFiles] = useState({})
+  const [uploadingRegistrationId, setUploadingRegistrationId] = useState('')
+  const [cancellingRegistrationId, setCancellingRegistrationId] = useState('')
+  const [actionMessage, setActionMessage] = useState('')
+  const [actionError, setActionError] = useState('')
+
+  const loadRegistrations = async () => {
+    try {
+      const response = await apiClient.get('/api/participants/registrations')
+      setRegistrations(response.data.registrations || [])
+      setError('')
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Unable to load registrations.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const response = await apiClient.get('/api/participants/registrations')
-        setRegistrations(response.data.registrations || [])
-      } catch (err) {
-        setError(err?.response?.data?.message || 'Unable to load registrations.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    load()
+    loadRegistrations()
   }, [])
 
   const normalized = useMemo(() => {
@@ -85,10 +90,72 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
   const currentTab = tabData[activeTab] || []
   const statusLabel = (status) => {
     if (status === 'registered') return 'Registered'
-    if (status === 'purchased') return 'Purchased'
+    if (status === 'pending_payment') return 'Pending Proof'
+    if (status === 'pending_approval') return 'Pending Approval'
+    if (status === 'successful') return 'Successful'
     if (status === 'cancelled') return 'Cancelled'
     if (status === 'rejected') return 'Rejected'
     return status
+  }
+
+  const canUploadProof = (registration) => (
+    registration.type === 'merchandise' && ['pending_payment', 'rejected'].includes(registration.status)
+  )
+
+  const canCancelRegistration = (registration) => {
+    if (registration.type !== 'normal') return false
+    if (registration.status !== 'registered') return false
+    if (!registration.event?.startTime) return true
+
+    return new Date(registration.event.startTime) > new Date()
+  }
+
+  const handleProofFileChange = (registrationId, file) => {
+    setProofFiles((prev) => ({ ...prev, [registrationId]: file || null }))
+  }
+
+  const handleUploadPaymentProof = async (registrationId) => {
+    const file = proofFiles[registrationId]
+    if (!file) {
+      setActionError('Select a payment proof image first.')
+      setActionMessage('')
+      return
+    }
+
+    setUploadingRegistrationId(registrationId)
+    setActionError('')
+    setActionMessage('')
+
+    try {
+      const formData = new FormData()
+      formData.append('paymentProof', file)
+      await apiClient.post(`/api/events/registrations/${registrationId}/payment-proof`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setActionMessage('Payment proof uploaded successfully. Awaiting organizer approval.')
+      setProofFiles((prev) => ({ ...prev, [registrationId]: null }))
+      await loadRegistrations()
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Unable to upload payment proof.')
+    } finally {
+      setUploadingRegistrationId('')
+    }
+  }
+
+  const handleCancelRegistration = async (registrationId) => {
+    setCancellingRegistrationId(registrationId)
+    setActionError('')
+    setActionMessage('')
+
+    try {
+      await apiClient.post(`/api/participants/registrations/${registrationId}/cancel`)
+      setActionMessage('Registration cancelled successfully.')
+      await loadRegistrations()
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Unable to cancel registration.')
+    } finally {
+      setCancellingRegistrationId('')
+    }
   }
 
   return (
@@ -129,6 +196,18 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
           </div>
         )}
 
+        {actionError && !error && (
+          <div className="alert alert-error shadow-lg">
+            <span>{actionError}</span>
+          </div>
+        )}
+
+        {actionMessage && !error && (
+          <div className="alert alert-success shadow-lg">
+            <span>{actionMessage}</span>
+          </div>
+        )}
+
         {!loading && !error && (
           <>
             <section className="space-y-4">
@@ -151,6 +230,16 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
                            <span>🕒 {formatDateRange(registration.event?.startTime, registration.event?.endTime)}</span>
                         </div>
                         <div className="card-actions justify-end mt-4">
+                          {canCancelRegistration(registration) && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              disabled={cancellingRegistrationId === registration._id}
+                              onClick={() => handleCancelRegistration(registration._id)}
+                            >
+                              {cancellingRegistrationId === registration._id ? 'Cancelling...' : 'Cancel Registration'}
+                            </button>
+                          )}
                           {registration.event && (
                             <Link
                               className="btn btn-sm btn-success"
@@ -220,7 +309,7 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
                             {registration.event?.name || 'Event'}
                           </h3>
                           <span className={`badge text-xs ${
-                            registration.status === 'registered' || registration.status === 'purchased' ? 'badge-success badge-outline' : 'badge-ghost'
+                            ['registered', 'successful'].includes(registration.status) ? 'badge-success badge-outline' : 'badge-ghost'
                           }`}>
                             {statusLabel(registration.status)}
                           </span>
@@ -236,6 +325,9 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
                         
                         <div className="text-xs space-y-1 opacity-70">
                            <p>📅 {formatDateRange(registration.event?.startTime, registration.event?.endTime)}</p>
+                           {registration.type === 'merchandise' && registration.paymentStatus && (
+                             <p>💳 Payment: {registration.paymentStatus.replace('_', ' ')}</p>
+                           )}
                            {registration.ticketId?._id && (
                              <p className="font-mono bg-base-200 p-1 rounded w-fit mt-2">
                                Ticket: {registration.ticketId.ticketCode || registration.ticketId._id.slice(-6).toUpperCase()}
@@ -243,8 +335,37 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
                            )}
                         </div>
 
+                        {canUploadProof(registration) && (
+                          <div className="mt-3 space-y-2">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="file-input file-input-bordered file-input-sm w-full"
+                              onChange={(e) => handleProofFileChange(registration._id, e.target.files?.[0] || null)}
+                            />
+                            <button
+                              className="btn btn-xs btn-outline"
+                              type="button"
+                              disabled={uploadingRegistrationId === registration._id || !proofFiles[registration._id]}
+                              onClick={() => handleUploadPaymentProof(registration._id)}
+                            >
+                              {uploadingRegistrationId === registration._id ? 'Uploading...' : 'Upload Payment Proof'}
+                            </button>
+                          </div>
+                        )}
+
                         {registration.ticketId?._id && (
                             <div className="card-actions justify-end mt-3">
+                            {canCancelRegistration(registration) && (
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-outline"
+                                disabled={cancellingRegistrationId === registration._id}
+                                onClick={() => handleCancelRegistration(registration._id)}
+                              >
+                                {cancellingRegistrationId === registration._id ? 'Cancelling...' : 'Cancel'}
+                              </button>
+                            )}
                             <Link
                                 className="btn btn-xs btn-outline"
                                 to={`/tickets/${registration.ticketId._id}`}
@@ -252,6 +373,19 @@ const ParticipantDashboard = ({ heading = 'My Events Dashboard' }) => {
                                 View Ticket
                             </Link>
                             </div>
+                        )}
+
+                        {!registration.ticketId?._id && canCancelRegistration(registration) && (
+                          <div className="card-actions justify-end mt-3">
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-outline"
+                              disabled={cancellingRegistrationId === registration._id}
+                              onClick={() => handleCancelRegistration(registration._id)}
+                            >
+                              {cancellingRegistrationId === registration._id ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

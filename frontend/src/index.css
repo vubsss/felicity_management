@@ -51,6 +51,62 @@ h3,
   padding: 32px 24px 56px;
 }
 
+.lb-menu-toggle {
+  display: none;
+  border-radius: 999px;
+  border: 1px solid var(--lb-border);
+  color: var(--lb-text);
+  padding: 0;
+  width: 38px;
+  height: 32px;
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.lb-menu-toggle--open {
+  border-color: rgba(155, 220, 59, 0.6);
+  background: rgba(155, 220, 59, 0.12);
+}
+
+.lb-menu-icon {
+  display: grid;
+  gap: 4px;
+}
+
+.lb-menu-line {
+  width: 18px;
+  height: 2px;
+  background: var(--lb-text);
+  border-radius: 999px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.lb-menu-toggle--open .lb-menu-line:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.lb-menu-toggle--open .lb-menu-line:nth-child(2) {
+  opacity: 0;
+}
+
+.lb-menu-toggle--open .lb-menu-line:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .lb-center {
   display: flex;
   align-items: center;
@@ -147,6 +203,85 @@ h3,
   color: var(--lb-muted);
 }
 
+@media (max-width: 768px) {
+  .lb-page {
+    padding: 20px 14px 36px;
+  }
+
+  .lb-header-inner {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+    justify-content: space-between;
+  }
+
+  .lb-logo {
+    padding: 0;
+    letter-spacing: 0.16em;
+    font-size: 18px;
+    flex: 1;
+  }
+
+  .lb-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lb-nav,
+  .lb-actions {
+    display: none;
+    width: 100%;
+    padding: 0;
+    justify-content: flex-start;
+  }
+
+  .lb-nav--open,
+  .lb-actions--open {
+    display: flex;
+  }
+
+  .lb-nav {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .lb-nav-link {
+    width: fit-content;
+    letter-spacing: 0.12em;
+    font-size: 10px;
+  }
+
+  .lb-actions {
+    gap: 8px;
+  }
+
+  .lb-user {
+    display: block;
+    width: 100%;
+  }
+
+  .lb-button {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  .lb-app .table {
+    min-width: 640px;
+  }
+}
+
+@media (min-width: 769px) {
+  .lb-header-inner {
+    flex-wrap: nowrap;
+  }
+
+  .lb-nav,
+  .lb-actions {
+    display: flex;
+  }
+}
+
 /* Custom Utilities */
 .glass-effect {
   @apply bg-base-100/70 backdrop-blur-lg border border-base-content/10;
@@ -211,6 +346,11 @@ h3,
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
+}
+
+.lb-app .select {
+  display: inline-flex;
+  align-items: center;
 }
 
 .lb-app .form-control {

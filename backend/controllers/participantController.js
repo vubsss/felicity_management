@@ -24,6 +24,10 @@ const passwordSchema = z.object({
     newPassword: z.string().min(6)
 });
 
+const cancelRegistrationSchema = z.object({
+    registrationId: z.string().min(1)
+});
+
 const getProfile = async (req, res, next) => {
     try {
         const participant = await Participant.findOne({ userId: req.user.userId });
@@ -158,6 +162,9 @@ const updatePreferences = async (req, res, next) => {
 
         if (parsed.data.interests !== undefined) {
             participant.interests = parsed.data.interests;
+            if (Array.isArray(parsed.data.interests) && parsed.data.interests.length > 0) {
+                participant.onboardingCompleted = true;
+            }
         }
         if (parsed.data.followedOrganisers !== undefined) {
             participant.followedOrganisers = parsed.data.followedOrganisers;
@@ -219,11 +226,74 @@ const getTicket = async (req, res, next) => {
     }
 };
 
+const cancelRegistration = async (req, res, next) => {
+    const parsed = cancelRegistrationSchema.safeParse({ registrationId: req.params.id });
+    if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid registration id' });
+    }
+
+    try {
+        const participant = await Participant.findOne({ userId: req.user.userId });
+        if (!participant) {
+            return res.status(404).json({ message: 'Participant not found' });
+        }
+
+        const registration = await Registration.findOne({
+            _id: parsed.data.registrationId,
+            participantId: participant._id
+        }).populate('eventId');
+
+        if (!registration) {
+            return res.status(404).json({ message: 'Registration not found' });
+        }
+
+        if (registration.type !== 'normal') {
+            return res.status(400).json({ message: 'Only event registrations can be cancelled here' });
+        }
+
+        if (registration.status === 'cancelled') {
+            return res.status(400).json({ message: 'Registration is already cancelled' });
+        }
+
+        if (registration.status !== 'registered') {
+            return res.status(400).json({ message: 'Only active registrations can be cancelled' });
+        }
+
+        const event = registration.eventId;
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found for this registration' });
+        }
+
+        if (event.startTime && new Date(event.startTime) <= new Date()) {
+            return res.status(400).json({ message: 'Cannot cancel after the event has started' });
+        }
+
+        registration.status = 'cancelled';
+        await registration.save();
+
+        if (registration.ticketId) {
+            const ticket = await Ticket.findById(registration.ticketId);
+            if (ticket) {
+                ticket.status = 'cancelled';
+                await ticket.save();
+            }
+        }
+
+        return res.json({
+            message: 'Registration cancelled successfully',
+            registration
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
 module.exports = {
     getPreferences,
     updatePreferences,
     getRegistrations,
     getTicket,
+    cancelRegistration,
     getProfile,
     updateProfile,
     changePassword,

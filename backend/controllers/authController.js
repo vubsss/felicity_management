@@ -119,7 +119,8 @@ const signupController = async (req, res, next) => {
             lastName,
             participantType,
             organisation: participantType === 'external' ? organisation : "IIIT",
-            contactNumber: contactNumber
+            contactNumber: contactNumber,
+            onboardingCompleted: false
         });
         await newParticipant.save();
         res.status(201).json({ message: 'User created successfully' });

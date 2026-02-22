@@ -15,7 +15,13 @@ const {
     updateStatus,
     requestPasswordReset,
     getParticipants,
-    exportParticipants
+    exportParticipants,
+    listPaymentApprovals,
+    reviewPaymentApproval,
+    getAttendanceDashboard,
+    scanAttendance,
+    manualAttendanceOverride,
+    exportAttendance
 } = require('../controllers/organiserController');
 
 const router = express.Router();
@@ -36,5 +42,11 @@ router.post('/events/:id/status', authJWT, requireRole(['organiser']), updateSta
 router.post('/password-reset-request', authJWT, requireRole(['organiser']), requestPasswordReset);
 router.get('/events/:id/participants', authJWT, requireRole(['organiser']), getParticipants);
 router.get('/events/:id/participants/export', authJWT, requireRole(['organiser']), exportParticipants);
+router.get('/events/:id/payments', authJWT, requireRole(['organiser']), listPaymentApprovals);
+router.post('/events/:id/payments/review', authJWT, requireRole(['organiser']), reviewPaymentApproval);
+router.get('/events/:id/attendance', authJWT, requireRole(['organiser']), getAttendanceDashboard);
+router.post('/events/:id/attendance/scan', authJWT, requireRole(['organiser']), scanAttendance);
+router.post('/events/:id/attendance/manual', authJWT, requireRole(['organiser']), manualAttendanceOverride);
+router.get('/events/:id/attendance/export', authJWT, requireRole(['organiser']), exportAttendance);
 
 module.exports = router;
