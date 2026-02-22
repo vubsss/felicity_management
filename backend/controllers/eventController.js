@@ -317,21 +317,23 @@ const registerForEvent = async (req, res, next) => {
         });
         await registration.save();
 
-        try {
-            const user = await User.findById(participant.userId).select('email').lean();
-            const frontendUrl = process.env.FRONTEND_URL;
-            const ticketUrl = frontendUrl ? `${frontendUrl.replace(/\/$/, '')}/tickets/${ticket._id}` : '';
-            if (user?.email) {
-                await sendTicketEmail({
+        const frontendUrl = process.env.FRONTEND_URL;
+        const ticketUrl = frontendUrl ? `${frontendUrl.replace(/\/$/, '')}/tickets/${ticket._id}` : '';
+
+        // Send mail in background so SMTP latency/failure does not delay API response.
+        User.findById(participant.userId).select('email').lean()
+            .then((user) => {
+                if (!user?.email) return null;
+                return sendTicketEmail({
                     to: user.email,
                     event,
                     ticket,
                     ticketUrl
                 });
-            }
-        } catch (emailError) {
-            // Ignore email failures to avoid blocking registration.
-        }
+            })
+            .catch((emailError) => {
+                console.error('Ticket email send failed:', emailError?.message || emailError);
+            });
 
         return res.status(201).json({ registration, ticket });
     } catch (error) {

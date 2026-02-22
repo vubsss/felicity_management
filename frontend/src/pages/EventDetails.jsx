@@ -392,6 +392,7 @@ const EventDetails = () => {
 
               <button
                 className="btn btn-success"
+                type="button"
                 onClick={handleRegister}
                 disabled={actionLoading || registrationClosed || isFull}
               >
@@ -466,6 +467,7 @@ const EventDetails = () => {
 
               <button
                 className="btn btn-success"
+                type="button"
                 onClick={handlePurchase}
                 disabled={actionLoading || registrationClosed || purchaseValidation.blocked}
               >
