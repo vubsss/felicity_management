@@ -1,34 +1,23 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const QRCode = require('qrcode');
 
-const buildTransporter = () => {
-    const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT || 587);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+const buildResend = () => {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.RESEND_FROM;
 
-    if (!host || !user || !pass) {
+    if (!apiKey || !from) {
         return null;
     }
 
-    return nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass },
-        connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT || 10000),
-        greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT || 10000),
-        socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 15000)
-    });
+    return { resend: new Resend(apiKey), from };
 };
 
 const sendTicketEmail = async ({ to, event, ticket, ticketUrl }) => {
-    const transporter = buildTransporter();
-    if (!transporter) {
-        return { ok: false, reason: 'smtp_not_configured' };
+    const client = buildResend();
+    if (!client) {
+        return { ok: false, reason: 'resend_not_configured' };
     }
 
-    const from = process.env.SMTP_FROM || process.env.SMTP_USER;
     const start = event.startTime ? new Date(event.startTime).toLocaleString() : 'TBD';
     const end = event.endTime ? new Date(event.endTime).toLocaleString() : 'TBD';
 
@@ -68,31 +57,32 @@ const sendTicketEmail = async ({ to, event, ticket, ticketUrl }) => {
         `<p>Ticket code: <strong>${ticket.ticketCode}</strong></p>`,
         `<p>Starts: ${start}<br/>Ends: ${end}</p>`,
         ticketUrl ? `<p><a href="${ticketUrl}">View ticket</a></p>` : '',
-        qrCodeBuffer
-            ? '<p>Show this QR code at entry:</p><p><img src="cid:ticket-qr" alt="Ticket QR code" /></p>'
-            : '',
+        qrCodeBuffer ? '<p>QR code is attached to this email.</p>' : '',
         '<p>Thanks,<br/>Felicity Team</p>'
     ].filter(Boolean).join('');
 
-    await transporter.sendMail({
-        from,
-        to,
-        subject,
-        text,
-        html,
-        attachments: qrCodeBuffer
-            ? [
-                {
-                    filename: `ticket-${ticket.ticketCode}.png`,
-                    content: qrCodeBuffer,
-                    contentType: 'image/png',
-                    cid: 'ticket-qr'
-                }
-            ]
-            : []
-    });
+    try {
+        await client.resend.emails.send({
+            from: client.from,
+            to,
+            subject,
+            text,
+            html,
+            attachments: qrCodeBuffer
+                ? [
+                    {
+                        filename: `ticket-${ticket.ticketCode}.png`,
+                        content: qrCodeBuffer.toString('base64'),
+                        contentType: 'image/png'
+                    }
+                ]
+                : []
+        });
 
-    return { ok: true };
+        return { ok: true };
+    } catch (error) {
+        return { ok: false, reason: 'resend_failed', error: error?.message || 'unknown_error' };
+    }
 };
 
 module.exports = { sendTicketEmail };
