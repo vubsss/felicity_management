@@ -15,7 +15,7 @@ const router = express.Router();
 router.get('/', browseEvents);
 router.get('/:id', getEvent);
 router.post('/:id/register', authJWT, requireRole(['participant']), upload.any(), registerForEvent);
-router.post('/:id/purchase', authJWT, requireRole(['participant']), purchaseMerchandise);
+router.post('/:id/purchase', authJWT, requireRole(['participant']), upload.single('paymentProof'), purchaseMerchandise);
 router.post('/registrations/:registrationId/payment-proof', authJWT, requireRole(['participant']), upload.single('paymentProof'), uploadMerchandisePaymentProof);
 
 module.exports = router;

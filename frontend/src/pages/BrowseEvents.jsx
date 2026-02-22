@@ -242,7 +242,14 @@ const BrowseEvents = () => {
                 <div className="card-body space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <h2 className="card-title text-base">{event.name}</h2>
-                    {filters.trending && <span className="badge badge-accent badge-outline">Trending</span>}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {event.registrationStatus && (
+                        <span className={`badge badge-outline ${event.registrationStatus === 'open' ? 'badge-success' : 'badge-ghost'}`}>
+                          {event.registrationStatus === 'open' ? 'Registrations open' : 'Registrations closed'}
+                        </span>
+                      )}
+                      {filters.trending && <span className="badge badge-accent badge-outline">Trending</span>}
+                    </div>
                   </div>
                   <p className="text-sm text-base-content/70 line-clamp-2">{event.description}</p>
                   <div className="text-xs text-base-content/60">

@@ -342,7 +342,16 @@ const registerForEvent = async (req, res, next) => {
 };
 
 const purchaseMerchandise = async (req, res, next) => {
-    const parsed = purchaseSchema.safeParse(req.body || {});
+    let parsedItems = req.body?.items;
+    if (typeof parsedItems === 'string') {
+        try {
+            parsedItems = JSON.parse(parsedItems);
+        } catch (error) {
+            return res.status(400).json({ message: 'Invalid purchase payload' });
+        }
+    }
+
+    const parsed = purchaseSchema.safeParse({ items: parsedItems });
     if (!parsed.success) {
         return res.status(400).json({ message: 'Invalid purchase payload' });
     }
@@ -359,6 +368,14 @@ const purchaseMerchandise = async (req, res, next) => {
             return res.status(400).json({ message: 'Purchases are closed for this event' });
         }
 
+        if (!req.file) {
+            return res.status(400).json({ message: 'Payment proof is required to place an order' });
+        }
+
+        if (!String(req.file.mimetype || '').startsWith('image/')) {
+            return res.status(400).json({ message: 'Payment proof must be an image file' });
+        }
+
         const participant = await Participant.findOne({ userId: req.user.userId });
         if (!participant) {
             return res.status(404).json({ message: 'Participant not found' });
@@ -373,18 +390,57 @@ const purchaseMerchandise = async (req, res, next) => {
             return res.status(400).json({ message: validation.message });
         }
 
+        const existingOrders = await Registration.find({
+            eventId: event._id,
+            participantId: participant._id,
+            type: 'merchandise',
+            status: { $in: ['pending_payment', 'pending_approval', 'successful'] }
+        }).lean();
+
+        const existingTotals = existingOrders.reduce((acc, order) => {
+            (order.orderItems || []).forEach((item) => {
+                const key = String(item.itemName || '');
+                if (!key) return;
+                acc[key] = (acc[key] || 0) + Number(item.quantity || 0);
+            });
+            return acc;
+        }, {});
+
+        for (const selection of validation.items) {
+            const eventItem = event.merchandise?.items?.find((item) => item.name === selection.itemName);
+            const purchaseLimit = eventItem?.purchaseLimit || 1;
+            const alreadyBought = existingTotals[selection.itemName] || 0;
+            if (alreadyBought + selection.quantity > purchaseLimit) {
+                return res.status(400).json({
+                    message: `Purchase limit exceeded for ${selection.itemName}`
+                });
+            }
+        }
+
         const registration = new Registration({
             eventId: event._id,
             participantId: participant._id,
             type: 'merchandise',
-            status: 'pending_payment',
-            paymentStatus: 'not_submitted',
-            orderItems: validation.items
+            status: 'pending_approval',
+            paymentStatus: 'pending',
+            orderItems: validation.items,
+            paymentProof: {
+                filename: req.file.originalname,
+                mimetype: req.file.mimetype,
+                size: req.file.size,
+                buffer: req.file.buffer.toString('base64'),
+                uploadedAt: new Date()
+            },
+            paymentReview: {
+                reviewedAt: null,
+                reviewedBy: null,
+                note: ''
+            }
         });
         await registration.save();
 
         return res.status(201).json({
-            message: 'Order created. Upload payment proof for approval.',
+            message: 'Order created. Payment proof submitted for approval.',
             registration
         });
     } catch (error) {

@@ -15,9 +15,7 @@ const EventDetails = () => {
   const [actionLoading, setActionLoading] = useState(false)
   const [formData, setFormData] = useState({})
   const [merchSelections, setMerchSelections] = useState([])
-  const [pendingOrderId, setPendingOrderId] = useState('')
   const [paymentProofFile, setPaymentProofFile] = useState(null)
-  const [paymentUploadLoading, setPaymentUploadLoading] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -137,7 +135,6 @@ const EventDetails = () => {
     setActionError('')
     setActionSuccess('')
     setTicketId('')
-    setPendingOrderId('')
     setActionLoading(true)
     try {
       const items = merchSelections.filter((item) => item.quantity > 0)
@@ -145,46 +142,22 @@ const EventDetails = () => {
         setActionError('Select at least one item to purchase.')
         return
       }
-      const response = await apiClient.post(`/api/events/${id}/purchase`, { items })
-      setActionSuccess('Order placed. Upload payment proof to move it to organizer approval.')
-      if (response.data?.registration?._id) {
-        setPendingOrderId(response.data.registration._id)
+      if (!paymentProofFile) {
+        setActionError('Upload payment proof before placing the order.')
+        return
       }
+      const proofData = new FormData()
+      proofData.append('items', JSON.stringify(items))
+      proofData.append('paymentProof', paymentProofFile)
+      await apiClient.post(`/api/events/${id}/purchase`, proofData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setActionSuccess('Order placed. Payment proof submitted for approval.')
+      setPaymentProofFile(null)
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Purchase failed.')
     } finally {
       setActionLoading(false)
-    }
-  }
-
-  const handleUploadPaymentProof = async () => {
-    if (!pendingOrderId) {
-      setActionError('No pending order found for proof upload.')
-      return
-    }
-    if (!paymentProofFile) {
-      setActionError('Select an image file first.')
-      return
-    }
-
-    setActionError('')
-    setPaymentUploadLoading(true)
-    try {
-      const proofData = new FormData()
-      proofData.append('paymentProof', paymentProofFile)
-
-      await apiClient.post(
-        `/api/events/registrations/${pendingOrderId}/payment-proof`,
-        proofData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      )
-      setActionSuccess('Payment proof uploaded. Order is now pending organizer approval.')
-      setPaymentProofFile(null)
-      setPendingOrderId('')
-    } catch (err) {
-      setActionError(err?.response?.data?.message || 'Unable to upload payment proof.')
-    } finally {
-      setPaymentUploadLoading(false)
     }
   }
 
@@ -465,6 +438,19 @@ const EventDetails = () => {
                 <div className="alert alert-warning"><span>Selected quantity exceeds stock.</span></div>
               )}
 
+              <div className="border border-base-200 rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold">Upload payment proof</h3>
+                <p className="text-sm text-base-content/70">
+                  Upload a payment screenshot/receipt image to place this order.
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="file-input file-input-bordered w-full"
+                  onChange={(e) => setPaymentProofFile(e.target.files?.[0] || null)}
+                />
+              </div>
+
               <button
                 className="btn btn-success"
                 type="button"
@@ -473,29 +459,6 @@ const EventDetails = () => {
               >
                 {actionLoading ? 'Processing...' : 'Purchase'}
               </button>
-
-              {pendingOrderId && (
-                <div className="border border-base-200 rounded-lg p-4 space-y-3">
-                  <h3 className="font-semibold">Upload payment proof</h3>
-                  <p className="text-sm text-base-content/70">
-                    Upload a payment screenshot/receipt image to move this order to pending approval.
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="file-input file-input-bordered w-full"
-                    onChange={(e) => setPaymentProofFile(e.target.files?.[0] || null)}
-                  />
-                  <button
-                    className="btn btn-outline"
-                    type="button"
-                    onClick={handleUploadPaymentProof}
-                    disabled={paymentUploadLoading || !paymentProofFile}
-                  >
-                    {paymentUploadLoading ? 'Uploading...' : 'Submit Payment Proof'}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
