@@ -1,23 +1,34 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const QRCode = require('qrcode');
 
-const buildResend = () => {
-    const apiKey = process.env.RESEND_API_KEY;
-    const from = process.env.RESEND_FROM;
+const buildTransporter = () => {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT || 587);
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
 
-    if (!apiKey || !from) {
+    if (!host || !user || !pass) {
         return null;
     }
 
-    return { resend: new Resend(apiKey), from };
+    return nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+        connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT || 10000),
+        greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT || 10000),
+        socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 15000)
+    });
 };
 
 const sendTicketEmail = async ({ to, event, ticket, ticketUrl }) => {
-    const client = buildResend();
-    if (!client) {
-        return { ok: false, reason: 'resend_not_configured' };
+    const transporter = buildTransporter();
+    if (!transporter) {
+        return { ok: false, reason: 'smtp_not_configured' };
     }
 
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER;
     const start = event.startTime ? new Date(event.startTime).toLocaleString() : 'TBD';
     const end = event.endTime ? new Date(event.endTime).toLocaleString() : 'TBD';
 
@@ -62,8 +73,8 @@ const sendTicketEmail = async ({ to, event, ticket, ticketUrl }) => {
     ].filter(Boolean).join('');
 
     try {
-        await client.resend.emails.send({
-            from: client.from,
+        await transporter.sendMail({
+            from,
             to,
             subject,
             text,
@@ -72,8 +83,9 @@ const sendTicketEmail = async ({ to, event, ticket, ticketUrl }) => {
                 ? [
                     {
                         filename: `ticket-${ticket.ticketCode}.png`,
-                        content: qrCodeBuffer.toString('base64'),
-                        contentType: 'image/png'
+                        content: qrCodeBuffer,
+                        contentType: 'image/png',
+                        cid: 'ticket-qr'
                     }
                 ]
                 : []
@@ -81,7 +93,7 @@ const sendTicketEmail = async ({ to, event, ticket, ticketUrl }) => {
 
         return { ok: true };
     } catch (error) {
-        return { ok: false, reason: 'resend_failed', error: error?.message || 'unknown_error' };
+        return { ok: false, reason: 'smtp_failed', error: error?.message || 'unknown_error' };
     }
 };
 

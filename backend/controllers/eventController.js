@@ -331,6 +331,14 @@ const registerForEvent = async (req, res, next) => {
                     ticketUrl
                 });
             })
+            .then((result) => {
+                if (result && result.ok === false) {
+                    console.error('Ticket email not sent:', result.reason || 'unknown');
+                    if (result.error) {
+                        console.error('Ticket email error:', result.error);
+                    }
+                }
+            })
             .catch((emailError) => {
                 console.error('Ticket email send failed:', emailError?.message || emailError);
             });
