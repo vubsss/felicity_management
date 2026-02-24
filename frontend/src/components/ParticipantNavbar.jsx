@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import apiClient from '../api/client'
 
 const navLinkClass = ({ isActive }) =>
   `lb-nav-link ${isActive ? 'lb-nav-link--active' : ''}`
@@ -9,6 +10,38 @@ const ParticipantNavbar = () => {
   const { profile, logout } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const [unreadCount, setUnreadCount] = React.useState(0)
+
+  React.useEffect(() => {
+    let isMounted = true
+
+    const loadUnreadCount = async () => {
+      try {
+        const response = await apiClient.get('/api/participants/notifications/unread-count')
+        if (isMounted) {
+          setUnreadCount(response.data.unreadCount || 0)
+        }
+      } catch {
+        if (isMounted) {
+          setUnreadCount(0)
+        }
+      }
+    }
+
+    const handleRefresh = () => {
+      loadUnreadCount()
+    }
+
+    loadUnreadCount()
+    const intervalId = window.setInterval(loadUnreadCount, 30000)
+    window.addEventListener('forum-notifications-updated', handleRefresh)
+
+    return () => {
+      isMounted = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('forum-notifications-updated', handleRefresh)
+    }
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -47,6 +80,9 @@ const ParticipantNavbar = () => {
           </NavLink>
           <NavLink to="/clubs" className={navLinkClass} onClick={handleNavClick}>
             Clubs/Organizers
+          </NavLink>
+          <NavLink to="/notifications" className={navLinkClass} onClick={handleNavClick}>
+            Notifications {unreadCount > 0 && <span className="badge badge-error badge-xs">{unreadCount}</span>}
           </NavLink>
           <NavLink to="/profile" className={navLinkClass} onClick={handleNavClick}>
             Profile

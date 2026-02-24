@@ -43,6 +43,10 @@ const participantSchema = new mongoose.Schema({
     onboardingCompleted: {
         type: Boolean,
         default: true
+    },
+    forumAnnouncementsReadAt: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true });
 

@@ -232,8 +232,8 @@ h3,
   .lb-actions {
     display: none;
     width: 100%;
-    padding: 0;
-    justify-content: flex-start;
+    padding: 8px 0 0;
+    justify-content: center;
   }
 
   .lb-nav--open,
@@ -243,22 +243,31 @@ h3,
 
   .lb-nav {
     flex-direction: column;
+    align-items: stretch;
     gap: 8px;
   }
 
   .lb-nav-link {
-    width: fit-content;
+    width: 100%;
+    text-align: center;
     letter-spacing: 0.12em;
     font-size: 10px;
   }
 
   .lb-actions {
+    justify-content: center;
     gap: 8px;
+  }
+
+  .lb-actions .lb-button {
+    min-width: 140px;
+    text-align: center;
   }
 
   .lb-user {
     display: block;
     width: 100%;
+    text-align: center;
   }
 
   .lb-button {

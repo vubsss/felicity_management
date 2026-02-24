@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import jsQR from 'jsqr'
 import apiClient from '../api/client'
 import { formatDateTime } from '../utils/dateFormat'
+import EventForum from '../components/EventForum'
 
 const tabClass = (activeTab, tab) => `tab ${activeTab === tab ? 'tab-active' : ''}`
 
@@ -435,6 +436,9 @@ const OrganizerEventDetails = () => {
           <button type="button" role="tab" className={tabClass(activeTab, 'attendance')} onClick={() => setActiveTab('attendance')}>
             Attendance Scanner
           </button>
+          <button type="button" role="tab" className={tabClass(activeTab, 'forum')} onClick={() => setActiveTab('forum')}>
+            Forum
+          </button>
         </div>
 
         {activeTab === 'participants' && (
@@ -778,6 +782,12 @@ const OrganizerEventDetails = () => {
                 </tbody>
               </table>
             </div>
+          </section>
+        )}
+
+        {activeTab === 'forum' && (
+          <section>
+            <EventForum eventId={id} />
           </section>
         )}
       </div>

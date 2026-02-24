@@ -4,6 +4,7 @@ const Participant = require('../models/Participant');
 const Registration = require('../models/Registration');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
+const ForumMessage = require('../models/ForumMessage');
 
 const allowedInterests = ['tech', 'sports', 'design', 'dance', 'music', 'quiz', 'concert', 'gaming', 'misc'];
 
@@ -27,6 +28,19 @@ const passwordSchema = z.object({
 const cancelRegistrationSchema = z.object({
     registrationId: z.string().min(1)
 });
+
+const getRegisteredEventIds = async (participantId) => {
+    const registrations = await Registration.find({
+        participantId,
+        status: { $nin: ['cancelled', 'rejected'] }
+    }).select('eventId').lean();
+
+    return [...new Set(
+        registrations
+            .map((registration) => String(registration.eventId))
+            .filter(Boolean)
+    )];
+};
 
 const getProfile = async (req, res, next) => {
     try {
@@ -201,6 +215,95 @@ const getRegistrations = async (req, res, next) => {
     }
 };
 
+const getNotifications = async (req, res, next) => {
+    try {
+        const participant = await Participant.findOne({ userId: req.user.userId })
+            .select('_id forumAnnouncementsReadAt')
+            .lean();
+        if (!participant) {
+            return res.status(404).json({ message: 'Participant not found' });
+        }
+
+        const eventIds = await getRegisteredEventIds(participant._id);
+
+        if (!eventIds.length) {
+            return res.json({ notifications: [] });
+        }
+
+        const readAt = participant.forumAnnouncementsReadAt ? new Date(participant.forumAnnouncementsReadAt) : null;
+
+        const announcements = await ForumMessage.find({
+            eventId: { $in: eventIds },
+            isAnnouncement: true,
+            isDeleted: false,
+            ...(readAt ? { createdAt: { $gt: readAt } } : {})
+        })
+            .populate('eventId', 'name startTime endTime')
+            .sort({ createdAt: -1 })
+            .limit(100)
+            .lean();
+
+        const notifications = announcements.map((message) => ({
+            id: String(message._id),
+            eventId: String(message.eventId?._id || message.eventId),
+            eventName: message.eventId?.name || 'Event',
+            authorName: message.authorName,
+            content: message.content,
+            createdAt: message.createdAt,
+            eventStartTime: message.eventId?.startTime || null,
+            eventEndTime: message.eventId?.endTime || null
+        }));
+
+        return res.json({ notifications });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+const getUnreadNotificationCount = async (req, res, next) => {
+    try {
+        const participant = await Participant.findOne({ userId: req.user.userId })
+            .select('_id forumAnnouncementsReadAt')
+            .lean();
+        if (!participant) {
+            return res.status(404).json({ message: 'Participant not found' });
+        }
+
+        const eventIds = await getRegisteredEventIds(participant._id);
+        if (!eventIds.length) {
+            return res.json({ unreadCount: 0 });
+        }
+
+        const readAt = participant.forumAnnouncementsReadAt ? new Date(participant.forumAnnouncementsReadAt) : null;
+        const unreadCount = await ForumMessage.countDocuments({
+            eventId: { $in: eventIds },
+            isAnnouncement: true,
+            isDeleted: false,
+            ...(readAt ? { createdAt: { $gt: readAt } } : {})
+        });
+
+        return res.json({ unreadCount });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+const markNotificationsRead = async (req, res, next) => {
+    try {
+        const participant = await Participant.findOne({ userId: req.user.userId });
+        if (!participant) {
+            return res.status(404).json({ message: 'Participant not found' });
+        }
+
+        participant.forumAnnouncementsReadAt = new Date();
+        await participant.save();
+
+        return res.json({ message: 'Notifications marked as read.' });
+    } catch (error) {
+        return next(error);
+    }
+};
+
 const getTicket = async (req, res, next) => {
     try {
         const participant = await Participant.findOne({ userId: req.user.userId });
@@ -292,6 +395,9 @@ module.exports = {
     getPreferences,
     updatePreferences,
     getRegistrations,
+    getNotifications,
+    getUnreadNotificationCount,
+    markNotificationsRead,
     getTicket,
     cancelRegistration,
     getProfile,

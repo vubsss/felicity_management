@@ -8,6 +8,9 @@ const {
     getPreferences,
     updatePreferences,
     getRegistrations,
+    getNotifications,
+    getUnreadNotificationCount,
+    markNotificationsRead,
     getTicket,
     cancelRegistration,
     followOrganiser,
@@ -22,6 +25,9 @@ router.get('/me', authJWT, requireRole(['participant']), getProfile);
 router.put('/me', authJWT, requireRole(['participant']), updateProfile);
 router.post('/password', authJWT, requireRole(['participant']), changePassword);
 router.get('/registrations', authJWT, requireRole(['participant']), getRegistrations);
+router.get('/notifications', authJWT, requireRole(['participant']), getNotifications);
+router.get('/notifications/unread-count', authJWT, requireRole(['participant']), getUnreadNotificationCount);
+router.post('/notifications/mark-read', authJWT, requireRole(['participant']), markNotificationsRead);
 router.post('/registrations/:id/cancel', authJWT, requireRole(['participant']), cancelRegistration);
 router.get('/tickets/:id', authJWT, requireRole(['participant']), getTicket);
 router.post('/follow/:id', authJWT, requireRole(['participant']), followOrganiser);

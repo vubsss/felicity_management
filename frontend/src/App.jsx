@@ -12,6 +12,7 @@ import MyEvents from './pages/MyEvents'
 import Clubs from './pages/Clubs'
 import OrganizerDetails from './pages/OrganizerDetails'
 import Profile from './pages/Profile'
+import Notifications from './pages/Notifications'
 import TicketDetails from './pages/TicketDetails'
 import OrganizerDashboard from './pages/OrganizerDashboard'
 import OrganizerEvents from './pages/OrganizerEvents'
@@ -302,6 +303,20 @@ const App = () => {
                 <AuthLayout>
                   <RoleRoute allowedRoles={['participant']}>
                     <Profile />
+                  </RoleRoute>
+                </AuthLayout>
+              </ParticipantOnboardingGate>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <ParticipantOnboardingGate>
+                <AuthLayout>
+                  <RoleRoute allowedRoles={['participant']}>
+                    <Notifications />
                   </RoleRoute>
                 </AuthLayout>
               </ParticipantOnboardingGate>

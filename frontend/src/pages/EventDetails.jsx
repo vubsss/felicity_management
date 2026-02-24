@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import apiClient from '../api/client'
 import { formatDateTime } from '../utils/dateFormat'
+import EventForum from '../components/EventForum'
 
 const EventDetails = () => {
   const { id } = useParams()
@@ -462,6 +463,8 @@ const EventDetails = () => {
             </div>
           </div>
         )}
+
+        <EventForum eventId={id} />
 
         <div className="text-sm text-base-content/70">
           Need your ticket? Check <Link className="link link-primary" to="/my-events">My Events</Link>.
