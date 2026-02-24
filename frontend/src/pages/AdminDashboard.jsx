@@ -2,25 +2,15 @@ import React, { useEffect, useState } from 'react'
 import apiClient from '../api/client'
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState({ active: 0, disabled: 0, archived: 0, openResets: 0 })
+  const [stats, setStats] = useState({ active: 0, disabled: 0, archived: 0, participants: 0, openResets: 0 })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [orgResponse, resetResponse] = await Promise.all([
-          apiClient.get('/api/admin/organisers'),
-          apiClient.get('/api/admin/password-resets')
-        ])
-
-        const organisers = orgResponse.data.organisers || []
-        const active = organisers.filter((row) => row.status === 'active').length
-        const disabled = organisers.filter((row) => row.status === 'disabled').length
-        const archived = organisers.filter((row) => row.status === 'archived').length
-        const openResets = resetResponse.data.requests?.length || 0
-
-        setStats({ active, disabled, archived, openResets })
+        const response = await apiClient.get('/api/admin/stats')
+        setStats(response.data.stats || { active: 0, disabled: 0, archived: 0, participants: 0, openResets: 0 })
       } catch (err) {
         setError(err?.response?.data?.message || 'Unable to load admin dashboard.')
       } finally {
@@ -50,6 +40,7 @@ const AdminDashboard = () => {
                 <div className="text-sm">Active: {stats.active}</div>
                 <div className="text-sm">Disabled: {stats.disabled}</div>
                 <div className="text-sm">Archived: {stats.archived}</div>
+                <div className="text-sm">Participants: {stats.participants}</div>
               </div>
             </div>
             <div className="card bg-base-100 shadow">

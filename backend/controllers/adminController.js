@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const { z } = require('zod');
 const Event = require('../models/Event');
 const Organiser = require('../models/Organiser');
+const Participant = require('../models/Participant');
 const PasswordResetRequest = require('../models/PasswordResetRequest');
 const Registration = require('../models/Registration');
 const Ticket = require('../models/Ticket');
@@ -44,10 +45,20 @@ const slugify = (value) =>
         .replace(/^-+|-+$/g, '')
         .slice(0, 24) || 'organiser';
 
-const generateOrganiserEmail = (name) => {
+const generateOrganiserEmail = async (name) => {
     const slug = slugify(name);
-    const suffix = Date.now().toString(36).slice(-6);
-    return `organiser.${slug}.${suffix}@felicity.local`;
+    const domain = 'clubs.iiit.ac.in';
+
+    for (let attempt = 0; attempt < 1000; attempt += 1) {
+        const numberedSlug = attempt === 0 ? slug : `${slug}-${attempt + 1}`;
+        const email = `${numberedSlug}-iiit@${domain}`;
+        const existing = await User.exists({ email });
+        if (!existing) {
+            return email;
+        }
+    }
+
+    throw new Error('Unable to generate unique organiser email');
 };
 
 const listOrganisers = async (req, res, next) => {
@@ -74,6 +85,30 @@ const listOrganisers = async (req, res, next) => {
     }
 };
 
+const getDashboardStats = async (req, res, next) => {
+    try {
+        const [active, disabled, archived, participants, openResets] = await Promise.all([
+            Organiser.countDocuments({ status: 'active' }),
+            Organiser.countDocuments({ status: 'disabled' }),
+            Organiser.countDocuments({ status: 'archived' }),
+            Participant.countDocuments({}),
+            PasswordResetRequest.countDocuments({ status: 'open' })
+        ]);
+
+        return res.json({
+            stats: {
+                active,
+                disabled,
+                archived,
+                participants,
+                openResets
+            }
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
 const createOrganiser = async (req, res, next) => {
     const parsed = organiserSchema.safeParse(req.body || {});
     if (!parsed.success) {
@@ -81,7 +116,7 @@ const createOrganiser = async (req, res, next) => {
     }
 
     try {
-        const loginEmail = generateOrganiserEmail(parsed.data.name);
+        const loginEmail = await generateOrganiserEmail(parsed.data.name);
         const password = generatePassword();
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -248,6 +283,7 @@ const forceResetPassword = async (req, res, next) => {
 };
 
 module.exports = {
+    getDashboardStats,
     listOrganisers,
     createOrganiser,
     updateOrganiserStatus,

@@ -2,6 +2,7 @@ const express = require('express');
 const authJWT = require('../middleware/authJWT');
 const requireRole = require('../middleware/requireRole');
 const {
+    getDashboardStats,
     listOrganisers,
     createOrganiser,
     updateOrganiserStatus,
@@ -13,6 +14,7 @@ const {
 
 const router = express.Router();
 
+router.get('/stats', authJWT, requireRole(['admin']), getDashboardStats);
 router.get('/organisers', authJWT, requireRole(['admin']), listOrganisers);
 router.post('/organisers', authJWT, requireRole(['admin']), createOrganiser);
 router.patch('/organisers/:id/status', authJWT, requireRole(['admin']), updateOrganiserStatus);
